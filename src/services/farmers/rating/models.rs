@@ -1,15 +1,12 @@
 //! Farm rating model impls
-#![allow(
-    dead_code,
-    clippy::missing_const_for_fn,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation
-)]
+
 use serde::Serialize;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use crate::core::{accounts::user::models::UserIndex, types::ModelIdentifier};
+use crate::core::{
+    accounts::user::models::UserIndex,
+    types::{ModelID, ModelIdentifier},
+};
 
 /// A `Vec` of farm ratings
 pub type FarmRatingList = Vec<FarmRating>;
@@ -19,7 +16,7 @@ pub type FarmRatingList = Vec<FarmRating>;
 /// Returned by `farm_rating_detail/list` handler.
 #[derive(Debug, Clone, Serialize)]
 pub struct FarmRating {
-    pub id: Uuid,
+    pub id: ModelID,
     pub grade: u8,
     pub comment: Option<String>,
     pub farm: ModelIdentifier,
@@ -31,16 +28,20 @@ pub struct FarmRating {
 
 impl FarmRating {
     /// Creates a new `FarmRating` from the database row
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation
+    )]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         grade: i32,
         comment: Option<String>,
         update_at: OffsetDateTime,
-        farm_id: Uuid,
+        farm_id: ModelID,
         farm_name: String,
-        user_id: Uuid,
+        user_id: ModelID,
         user_first_name: String,
         user_last_name: Option<String>,
         user_photo: Option<String>,
@@ -55,20 +56,3 @@ impl FarmRating {
         }
     }
 }
-
-// /// Filter for `FarmRatings`
-// #[derive(Clone, Debug)]
-// pub enum FarmRatingFilter {
-//     AuthorIdEq(Vec<Uuid>),
-//     AuthorIdNe(Vec<Uuid>),
-//     FarmIdEq(Vec<Uuid>),
-//     FarmIdNe(Vec<Uuid>),
-//     GradeLt(i32),
-//     GradeGt(i32),
-//     GradeEq(Vec<i32>),
-//     GradeNe(Vec<i32>),
-//     CreatedAtLt(Date),
-//     CreatedAtGt(Date),
-//     CreatedAtEq(Vec<Date>),
-//     CreatedAtNe(Vec<Date>),
-// }

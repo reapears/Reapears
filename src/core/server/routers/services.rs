@@ -5,10 +5,10 @@ use axum::{
     routing::{get, post, put},
     Router,
 };
-use tower_http::limit::RequestBodyLimitLayer;
+// use tower_http::limit::RequestBodyLimitLayer;
 
 use crate::{
-    files::IMAGE_MAX_SIZE,
+    // files::IMAGE_MAX_SIZE,
     server::state::ServerState,
     services::{
         farmers::{
@@ -39,12 +39,9 @@ use crate::{
                     cultivar_image_upload, cultivar_index, cultivar_list, cultivar_update,
                 },
             },
-            harvest::{
-                handlers::{
-                    harvest_create, harvest_delete, harvest_detail, harvest_image_delete,
-                    harvest_image_uploads, harvest_list, harvest_update,
-                },
-                HARVEST_MAX_IMAGE,
+            harvest::handlers::{
+                harvest_create, harvest_delete, harvest_detail, harvest_image_delete,
+                harvest_image_uploads, harvest_list, harvest_update,
             },
         },
     },
@@ -72,10 +69,11 @@ pub fn routers() -> Router<ServerState> {
         )
         .route(
             "/cultivars/:cultivar_id/photo",
-            post(cultivar_image_upload).delete(cultivar_image_delete),
+            post(cultivar_image_upload)
+                .layer(DefaultBodyLimit::disable())
+                // .layer(RequestBodyLimitLayer::new(IMAGE_MAX_SIZE))
+                .delete(cultivar_image_delete),
         )
-        .layer(DefaultBodyLimit::disable())
-        .layer(RequestBodyLimitLayer::new(IMAGE_MAX_SIZE))
         // Harvest
         .route("/harvests", get(harvest_list).post(harvest_create))
         .route(
@@ -86,12 +84,13 @@ pub fn routers() -> Router<ServerState> {
         )
         .route(
             "/harvests/:harvest_id/photos",
-            post(harvest_image_uploads).delete(harvest_image_delete),
+            post(harvest_image_uploads)
+                .layer(DefaultBodyLimit::disable())
+                // .layer(RequestBodyLimitLayer::new(
+                //     IMAGE_MAX_SIZE * HARVEST_MAX_IMAGE as usize,
+                // ))
+                .delete(harvest_image_delete),
         )
-        .layer(DefaultBodyLimit::disable())
-        .layer(RequestBodyLimitLayer::new(
-            IMAGE_MAX_SIZE * HARVEST_MAX_IMAGE,
-        ))
         // Farms
         .route("/farms", get(farm_list).post(farm_create))
         .route(

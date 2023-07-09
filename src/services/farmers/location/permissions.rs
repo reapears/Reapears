@@ -1,16 +1,15 @@
 //! Location permission impls
 
-use uuid::Uuid;
-
 use crate::{
     endpoint::{EndpointRejection, EndpointResult},
     server::state::DatabaseConnection,
+    types::ModelID,
 };
 
 /// Validate  user owns a location
 pub async fn check_user_owns_location(
-    user_id: Uuid,
-    location_id: Uuid,
+    user_id: ModelID,
+    location_id: ModelID,
     db: DatabaseConnection,
 ) -> EndpointResult<()> {
     match sqlx::query!(
@@ -26,8 +25,8 @@ pub async fn check_user_owns_location(
                 AND location_.id = $2
             )
         "#,
-        user_id,
-        location_id
+        user_id.0,
+        location_id.0
     )
     .fetch_one(&db.pool)
     .await

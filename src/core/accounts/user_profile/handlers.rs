@@ -5,14 +5,14 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use uuid::Uuid;
 
 use crate::{
     auth::CurrentUser,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidatedJson},
+    endpoint::{EndpointRejection, EndpointResult},
     files,
     server::state::DatabaseConnection,
-    settings::user_uploads_dir,
+    settings::USER_UPLOAD_DIR,
+    types::ModelID,
 };
 
 use super::{
@@ -23,7 +23,7 @@ use super::{
 /// Handles the `GET account/users/:id/profile` route.
 #[tracing::instrument(skip(db))]
 pub async fn user_profile(
-    ModelId(id): ModelId<Uuid>,
+    id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<UserProfile>> {
     UserProfile::find(id, db).await.map_or_else(
@@ -39,21 +39,20 @@ pub async fn user_profile(
 
 /// Handlers the `GET /account/users/profile` route.
 pub async fn user_my_profile(
-    current_user: CurrentUser,
+    user: CurrentUser,
     db: State<DatabaseConnection>,
 ) -> EndpointResult<Json<UserProfile>> {
-    user_profile(ModelId(current_user.id), db).await
+    user_profile(user.id, db).await
 }
 
 /// Handles the `PUT /account/users/profile` route.
 #[tracing::instrument(skip(db))]
 pub async fn user_profile_update(
-    current_user: CurrentUser,
+    user: CurrentUser,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<UserProfileUpdateForm>,
+    form: UserProfileUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    let user_id = current_user.id;
-    UserProfile::create_or_update(user_id, form.into(), db)
+    UserProfile::create_or_update(user.id, form.into(), db)
         .await
         .map_or_else(
             |_err| Err(EndpointRejection::internal_server_error()),
@@ -64,7 +63,7 @@ pub async fn user_profile_update(
 /// Handles the `POST /account/users/profile/photo` route.
 #[tracing::instrument(skip(db))]
 pub async fn user_photo_upload(
-    current_user: CurrentUser,
+    user: CurrentUser,
     State(db): State<DatabaseConnection>,
     multipart: Multipart,
 ) -> EndpointResult<Json<String>> {
@@ -72,11 +71,10 @@ pub async fn user_photo_upload(
     handler.accept().await?; // Receive photo from the client
     if let Some(file) = uploads.files().await {
         // Save an image to the file system
-        let saved_to = files::save_image(file, user_uploads_dir()).await?;
+        let saved_to = files::save_image(file, USER_UPLOAD_DIR).await?;
 
         // Save image path to the database
-        let (new_photo, old_photo) =
-            UserProfile::insert_photo(current_user.id, saved_to, db).await?;
+        let (new_photo, old_photo) = UserProfile::insert_photo(user.id, saved_to, db).await?;
 
         // Delete old photo
         if let Some(old_photo) = old_photo {

@@ -11,7 +11,7 @@ use axum_extra::extract::PrivateCookieJar;
 
 use crate::{
     auth::{get_current_user, CurrentUser},
-    endpoint::{EndpointResult, ValidatedJson},
+    endpoint::EndpointResult,
     server::state::DatabaseConnection,
 };
 
@@ -30,7 +30,7 @@ pub async fn login(
     redirect_to: Option<Query<SuccessRedirect>>,
     cookie_jar: PrivateCookieJar,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<LoginForm>,
+    form: LoginForm,
 ) -> EndpointResult<(PrivateCookieJar, Redirect)> {
     // Verify the user is not logged-in already
     // so we don't insert duplicate sessions in the database

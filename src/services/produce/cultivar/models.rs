@@ -2,9 +2,8 @@
 #![allow(dead_code, clippy::missing_const_for_fn)]
 
 use serde::Serialize;
-use uuid::Uuid;
 
-use crate::services::produce::harvest::models::HarvestIndex;
+use crate::{services::produce::harvest::models::HarvestIndex, types::ModelID};
 
 /// A `Vec` of cultivars
 pub type CultivarList = Vec<CultivarIndex>;
@@ -14,7 +13,7 @@ pub type CultivarList = Vec<CultivarIndex>;
 /// Returned by `cultivar_detail` handler.
 #[derive(Debug, Clone, Serialize)]
 pub struct Cultivar {
-    pub id: Uuid,
+    pub id: ModelID,
     pub name: String,
     pub category: String,
     pub image: Option<String>,
@@ -25,7 +24,7 @@ impl Cultivar {
     /// Creates a new Cultivar from the database row
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         name: String,
         category: String,
         image: Option<String>,
@@ -45,7 +44,7 @@ impl Cultivar {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CultivarIndex {
-    pub id: Uuid,
+    pub id: ModelID,
     pub name: String,
     pub image: Option<String>,
     pub harvest_count: u64,
@@ -56,7 +55,7 @@ impl CultivarIndex {
     #[allow(clippy::cast_sign_loss)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         name: String,
         image: Option<String>,
         harvest_count: Option<i64>,
@@ -69,17 +68,3 @@ impl CultivarIndex {
         }
     }
 }
-
-// /// Filters for Cultivars
-// #[derive(Debug, Clone)]
-// pub enum CultivarFilter {
-//     NameEq(Vec<String>),
-//     NameNe(Vec<String>),
-//     CategoryEq(Vec<String>),
-//     CategoryNe(Vec<String>),
-
-//     HarvestCountLt(i64),
-//     HarvestCountEq(Vec<i64>),
-//     HarvestCountNe(Vec<i64>),
-//     HarvestCountGt(i64),
-// }

@@ -8,7 +8,6 @@ use crate::{error::ServerResult, files, settings};
 ///
 /// Return io error
 pub async fn delete_user_photo(file_name: &str) -> ServerResult<()> {
-    let dir = settings::user_uploads_dir();
-    let paths = files::saved_paths(&dir, file_name);
+    let paths = files::saved_paths(settings::USER_UPLOAD_DIR, file_name);
     files::delete_files(paths).await
 }

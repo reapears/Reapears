@@ -2,17 +2,17 @@
 
 use serde::Serialize;
 use time::Date;
-use uuid::Uuid;
 
 use crate::{
     core::accounts::user::models::UserIndex, services::farmers::location::admin::LocationAdmin,
+    types::ModelID,
 };
 
 /// Return by admin's `farm detail` handler
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FarmAdmin {
-    pub id: Uuid,
+    pub id: ModelID,
     pub name: String,
     pub owner: UserIndex,
     pub locations: Vec<LocationAdmin>,
@@ -24,9 +24,9 @@ impl FarmAdmin {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         name: String,
-        owner_id: Uuid,
+        owner_id: ModelID,
         owner_first_name: String,
         owner_last_name: Option<String>,
         owner_photo: Option<String>,

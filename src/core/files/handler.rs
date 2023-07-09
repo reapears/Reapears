@@ -7,8 +7,8 @@ use crate::{endpoint::EndpointRejection, files::UploadedFile};
 
 ///Accept file uploads via `multipart/form-data`
 #[must_use]
-pub fn accept_uploads(multipart: Multipart, file_count: usize) -> (UploadHandler, Uploads) {
-    let (sender, receiver) = mpsc::channel(file_count);
+pub fn accept_uploads(multipart: Multipart, file_count: u8) -> (UploadHandler, Uploads) {
+    let (sender, receiver) = mpsc::channel(file_count.into());
     let handler = UploadHandler {
         multipart,
         file_count,
@@ -25,7 +25,7 @@ pub fn accept_uploads(multipart: Multipart, file_count: usize) -> (UploadHandler
 #[derive(Debug)]
 pub struct UploadHandler {
     pub multipart: Multipart,
-    pub file_count: usize,
+    pub file_count: u8,
     pub sender: Sender<UploadedFile>,
 }
 
@@ -34,50 +34,31 @@ impl UploadHandler {
     /// from the client and send them to [Uploads] via channels
     #[tracing::instrument(skip(self))]
     pub async fn accept(mut self) -> Result<(), EndpointRejection> {
-        let handler = tokio::spawn(async move {
-            let mut received_file_count = 0;
-            while let Some(field) = self
-                .multipart
-                .next_field()
-                .await
-                .map_err(|err| EndpointRejection::BadRequest(err.to_string().into()))?
-            {
-                // Only accept files until the max number of files is reached
-                if received_file_count == self.file_count {
-                    return Ok(());
-                }
-
-                let file = UploadedFile::try_from_field(field).await?;
-
-                // Tracing file upload
-                let file_name = file.file_name();
-                let id = file.id;
-                let file_size = file.content.len() * 8;
-                let received_no = format!("{}/{}", received_file_count + 1, self.file_count);
-                tracing::trace!("{}", format!("Accepted file[{received_no}] {{ name:{file_name}, bytes:{file_size}, id:{id} }}"));
-
-                if matches!(self.sender.send(file).await, Ok(())) {
-                    // update received file count
-                    received_file_count += 1;
-                } else {
-                    tracing::error!(
-                         "Could not finish sending files: receiver dropped while sending files"
-                    );
-                    return Err(EndpointRejection::internal_server_error());
-                }
+        let mut received_file_count = 0;
+        while let Some(field) = self
+            .multipart
+            .next_field()
+            .await
+            .map_err(|err| EndpointRejection::BadRequest(err.to_string().into()))?
+        {
+            // Only accept files until the max number of files given
+            if received_file_count == self.file_count {
+                return Ok(());
             }
 
-            Ok(())
-        })
-        .await;
+            let file = UploadedFile::try_from_field(field).await?;
 
-        match handler {
-            Ok(upload_result) => upload_result,
-            Err(err) => {
-                tracing::error!("{}", err);
-                Err(EndpointRejection::internal_server_error())
+            if matches!(self.sender.send(file).await, Ok(())) {
+                // Update received file count
+                received_file_count += 1;
+            } else {
+                tracing::error!(
+                    "Could not finish sending files: receiver dropped while sending files"
+                );
+                return Err(EndpointRejection::internal_server_error());
             }
         }
+        Ok(())
     }
 }
 

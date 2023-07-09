@@ -1,17 +1,16 @@
 //! Location region forms impls
 
-use axum::async_trait;
+use axum::{
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, Json},
+    http::Request,
+};
 use serde::Deserialize;
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    db,
-    endpoint::{
-        validators::{parse_uuid, unwrap_uuid},
-        EndpointRejection, EndpointResult, ModelId, ValidateForm,
-    },
-    server::state::ServerState,
+    endpoint::EndpointRejection, server::state::ServerState,
+    services::farmers::location::forms::validate_country_id, types::ModelID,
 };
 
 /// Region create form
@@ -27,38 +26,41 @@ pub struct RegionForm {
 /// Region create form cleaned data
 #[derive(Debug, Clone)]
 pub struct RegionInsertData {
-    pub id: Uuid,
-    pub country_id: Uuid,
+    pub id: ModelID,
+    pub country_id: ModelID,
     pub name: String,
 }
 
 impl From<RegionForm> for RegionInsertData {
     fn from(form: RegionForm) -> Self {
         Self {
-            id: db::model_id(),
-            country_id: unwrap_uuid(&form.country_id),
+            id: ModelID::new(),
+            country_id: ModelID::from_str_unchecked(&form.country_id),
             name: form.name,
         }
     }
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for RegionForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate RegionForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
-            Ok(()) => {
-                parse_uuid(
-                    &self.country_id,
-                    "Location country not found",
-                    "Invalid country id",
-                )?;
+impl<B> FromRequest<ServerState, B> for RegionForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
 
-                Ok(self)
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
+        match input.validate() {
+            Ok(()) => {
+                // Validate country id exists
+                let Ok(country_id) = ModelID::try_from(input.country_id.as_str()) else{
+                    return Err(EndpointRejection::BadRequest("Country not found".into()));
+                };
+                validate_country_id(country_id, state.database.clone()).await?;
+
+                Ok(input)
             }
             Err(err) => {
                 tracing::error!("Validation error: {}", err);
@@ -68,20 +70,20 @@ impl ValidateForm<ServerState> for RegionForm {
     }
 }
 
-// === Region update impl ===
+// ===== Region Update form impl =====
 
 /// Region update form cleaned data
 #[derive(Debug, Clone)]
 pub struct RegionUpdateData {
     pub name: Option<String>,
-    pub country_id: Option<Uuid>,
+    pub country_id: Option<ModelID>,
 }
 
 impl From<RegionForm> for RegionUpdateData {
     fn from(form: RegionForm) -> Self {
         Self {
             name: Some(form.name),
-            country_id: Some(unwrap_uuid(&form.country_id)),
+            country_id: Some(ModelID::from_str_unchecked(&form.country_id)),
         }
     }
 }

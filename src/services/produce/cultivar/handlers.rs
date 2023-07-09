@@ -5,15 +5,13 @@ use axum::{
     http::StatusCode,
 };
 
-use uuid::Uuid;
-
 use crate::{
-    auth::CurrentUser,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidatedJson},
+    auth::AdminUser,
+    endpoint::{EndpointRejection, EndpointResult},
     files,
     server::state::DatabaseConnection,
-    settings::cultivar_uploads_dir,
-    types::{ModelIndex, Pagination},
+    settings::CULTIVAR_UPLOAD_DIR,
+    types::{ModelID, ModelIndex, Pagination},
 };
 
 use super::{
@@ -39,7 +37,7 @@ pub async fn cultivar_list(
 /// Handles the `GET /cultivars/:cultivar_id` route.
 #[tracing::instrument(skip(db))]
 pub async fn cultivar_detail(
-    ModelId(cultivar_id): ModelId<Uuid>,
+    cultivar_id: ModelID,
     pg: Option<Query<Pagination>>,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<Cultivar>> {
@@ -58,57 +56,45 @@ pub async fn cultivar_detail(
 }
 
 /// Handles the `POST /cultivars` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user, form))]
 pub async fn cultivar_create(
-    current_user: CurrentUser,
+    #[allow(unused_variables)] user: AdminUser,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<CultivarCreateForm>,
+    form: CultivarCreateForm,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_staff {
-        Cultivar::insert(form.into(), db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_cultivar_id| Ok(StatusCode::CREATED),
-        )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    Cultivar::insert(form.into(), db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_cultivar_id| Ok(StatusCode::CREATED),
+    )
 }
 
 /// Handles the `PUT /cultivars/:cultivar_id` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user, form))]
 pub async fn cultivar_update(
-    current_user: CurrentUser,
-    ModelId(cultivar_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: AdminUser,
+    cultivar_id: ModelID,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<CultivarUpdateForm>,
+    form: CultivarUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_staff {
-        Cultivar::update(cultivar_id, form.into(), db)
-            .await
-            .map_or_else(
-                |_err| Err(EndpointRejection::internal_server_error()),
-                |_| Ok(StatusCode::OK),
-            )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    Cultivar::update(cultivar_id, form.into(), db)
+        .await
+        .map_or_else(
+            |_err| Err(EndpointRejection::internal_server_error()),
+            |_| Ok(StatusCode::OK),
+        )
 }
 
 /// Handles the `DELETE /cultivars/:cultivar_id` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user))]
 pub async fn cultivar_delete(
-    current_user: CurrentUser,
-    ModelId(cultivar_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: AdminUser,
+    cultivar_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_staff {
-        Cultivar::delete(cultivar_id, db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::NO_CONTENT),
-        )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    Cultivar::delete(cultivar_id, db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_| Ok(StatusCode::NO_CONTENT),
+    )
 }
 
 /// Handles the `GET /cultivars/index` route.
@@ -123,52 +109,43 @@ pub async fn cultivar_index(
 }
 
 /// Handles the `POST /cultivars/:cultivar_id/photo` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user, multipart))]
 pub async fn cultivar_image_upload(
-    current_user: CurrentUser,
-    ModelId(cultivar_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: AdminUser,
+    cultivar_id: ModelID,
     State(db): State<DatabaseConnection>,
     multipart: Multipart,
 ) -> EndpointResult<Json<String>> {
-    if current_user.is_staff {
-        let (handler, mut uploads) = files::accept_uploads(multipart, CULTIVAR_MAX_IMAGE);
-        handler.accept().await?; // Receive file from the client
-        if let Some(file) = uploads.files().await {
-            // Save an image to the file system
-            let saved_to = files::save_image(file, cultivar_uploads_dir()).await?;
+    let (handler, mut uploads) = files::accept_uploads(multipart, CULTIVAR_MAX_IMAGE);
+    handler.accept().await?; // Receive file from the client
+    if let Some(file) = uploads.files().await {
+        // Save an image to the file system
+        let paths = files::save_image(file, CULTIVAR_UPLOAD_DIR).await?;
 
-            // Save image path to the database
-            let (new_image, old_image) = Cultivar::insert_photo(cultivar_id, saved_to, db).await?;
+        // Save image path to the database
+        let (path, old_image) = Cultivar::insert_photo(cultivar_id, paths.clone(), db).await?;
 
-            // Delete old image
-            if let Some(old_image) = old_image {
-                tokio::spawn(async move { delete_cultivar_photo(&old_image).await });
-            }
-
-            Ok(Json(new_image))
-        } else {
-            Err(EndpointRejection::BadRequest(
-                "Cultivar image is not received".into(),
-            ))
+        if let Some(old_image) = old_image {
+            tokio::spawn(async move { delete_cultivar_photo(&old_image).await });
         }
+
+        Ok(Json(path))
     } else {
-        Err(EndpointRejection::forbidden())
+        Err(EndpointRejection::BadRequest(
+            "Cultivar image is not received".into(),
+        ))
     }
 }
 
 /// Handles the `DELETE /cultivars/:cultivar_id/photo` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user))]
 pub async fn cultivar_image_delete(
-    current_user: CurrentUser,
-    ModelId(cultivar_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: AdminUser,
+    cultivar_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_staff {
-        Cultivar::delete_photo(cultivar_id, db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::NO_CONTENT),
-        )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    Cultivar::delete_photo(cultivar_id, db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_| Ok(StatusCode::NO_CONTENT),
+    )
 }

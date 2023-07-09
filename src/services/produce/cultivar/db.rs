@@ -1,14 +1,13 @@
 //! Cultivar database impl
 
 use camino::Utf8PathBuf;
-use uuid::Uuid;
 
 use crate::{
     error::ServerResult,
     files,
     server::state::DatabaseConnection,
     services::produce::harvest::models::HarvestIndex,
-    types::{ModelIdentifier, ModelIndex, Pagination},
+    types::{ModelID, ModelIdentifier, ModelIndex, Pagination},
 };
 
 use super::{
@@ -50,7 +49,7 @@ impl Cultivar {
                     .into_iter()
                     .map(|rec| {
                         CultivarIndex::from_row(
-                            rec.cultivar_id,
+                            rec.cultivar_id.into(),
                             rec.cultivar_name,
                             rec.cultivar_image,
                             rec.harvests_count,
@@ -70,7 +69,7 @@ impl Cultivar {
     /// Fetches cultivar detail from the database
     #[tracing::instrument(name = "Fetch Cultivar", skip(db))]
     pub async fn find(
-        id: Uuid,
+        id: ModelID,
         pg: Option<Pagination>,
         db: DatabaseConnection,
     ) -> ServerResult<Option<Self>> {
@@ -109,7 +108,7 @@ impl Cultivar {
                 LIMIT $2
                 OFFSET $3;
             "#,
-            id,
+            id.0,
             limit,
             offset
         )
@@ -120,7 +119,7 @@ impl Cultivar {
             Ok(records) => {
                 let first_rec = &records[0];
 
-                let cultivar_id = first_rec.cultivar_id;
+                let cultivar_id = first_rec.cultivar_id.into();
                 let cultivar_name = first_rec.cultivar_name.clone();
                 let cultivar_image = first_rec.cultivar_image.clone();
                 let cultivar_category = first_rec.cultivar_category.clone();
@@ -130,7 +129,7 @@ impl Cultivar {
                     .filter(|rec| rec.harvest_id.is_some())
                     .map(|rec| {
                         HarvestIndex::from_row(
-                            rec.harvest_id.unwrap(),
+                            rec.harvest_id.unwrap().into(),
                             rec.harvest_price.unwrap(),
                             rec.harvest_available_at.unwrap(),
                             rec.harvest_images,
@@ -164,7 +163,7 @@ impl Cultivar {
     pub async fn insert(
         cultivar: CultivarInsertData,
         db: DatabaseConnection,
-    ) -> ServerResult<Uuid> {
+    ) -> ServerResult<ModelID> {
         match sqlx::query!(
             r#"
                 INSERT INTO services.cultivars (
@@ -174,8 +173,8 @@ impl Cultivar {
                 )
                 VALUES ($1, $2, $3);
             "#,
-            cultivar.id,
-            cultivar.category_id,
+            cultivar.id.0,
+            cultivar.category_id.0,
             cultivar.name
         )
         .execute(&db.pool)
@@ -195,7 +194,7 @@ impl Cultivar {
     /// Updates cultivar in the database
     #[tracing::instrument(name = "Update Cultivar", skip(db, cultivar))]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         cultivar: CultivarUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -207,8 +206,8 @@ impl Cultivar {
                 WHERE cultivar.id = $3
            "#,
             cultivar.name,
-            cultivar.category_id,
-            id
+            cultivar.category_id.map(|id| id.0),
+            id.0
         )
         .execute(&db.pool)
         .await
@@ -226,14 +225,14 @@ impl Cultivar {
 
     /// Deletes cultivar from the database
     #[tracing::instrument(name = "Delete Cultivar", skip(db))]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 DELETE FROM services.cultivars cultivar
                 WHERE cultivar.id = $1
                 RETURNING cultivar.image
            "#,
-            id
+            id.0
         )
         .fetch_one(&db.pool)
         .await
@@ -260,7 +259,7 @@ impl Cultivar {
     /// Returning new and old images paths
     #[tracing::instrument(name = "Database::cultivar-insert-image", skip(db))]
     pub async fn insert_photo(
-        id: Uuid,
+        id: ModelID,
         paths: Vec<Utf8PathBuf>,
         db: DatabaseConnection,
     ) -> ServerResult<(String, Option<String>)> {
@@ -278,7 +277,7 @@ impl Cultivar {
                 ) AS old_image
            "#,
             path,
-            id
+            id.0
         )
         .fetch_one(&db.pool)
         .await
@@ -299,7 +298,7 @@ impl Cultivar {
 
     /// Delete cultivar image path from the database
     #[tracing::instrument(name = "Database::cultivar-delete-image", skip(db))]
-    pub async fn delete_photo(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete_photo(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 UPDATE services.cultivars cultivar
@@ -312,7 +311,7 @@ impl Cultivar {
                     WHERE  cultivar.id = $1
                 ) AS image
            "#,
-            id
+            id.0
         )
         .fetch_one(&db.pool)
         .await
@@ -352,7 +351,7 @@ impl Cultivar {
             Ok(records) => {
                 let cultivar_index = records
                     .into_iter()
-                    .map(|rec| ModelIdentifier::from_row(rec.id, rec.name))
+                    .map(|rec| ModelIdentifier::from_row(rec.id.into(), rec.name))
                     .collect();
 
                 Ok(cultivar_index)

@@ -1,19 +1,19 @@
 //! Email sender
 
 use lettre::{
-    message::{header::ContentType, MultiPart, SinglePart},
     transport::smtp::{authentication::Credentials, PoolConfig},
-    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor as Tokio,
+    AsyncSmtpTransport, AsyncTransport, Tokio1Executor as Tokio,
 };
 
 use crate::error::{ServerError, ServerResult};
 
-use super::{EMAIL_DISPLAY_NAME, OUTLOOK_SMTP_SERVER, REAPEARS_EMAIL};
+use super::{emails::EmailTemplates, message::EmailMessage, OUTLOOK_SMTP_SERVER, REAPEARS_EMAIL};
 
 /// SMTP email sender
 #[derive(Debug, Clone)]
 pub struct Mail {
     mail: AsyncSmtpTransport<Tokio>,
+    emails: EmailTemplates,
 }
 
 impl Mail {
@@ -28,6 +28,7 @@ impl Mail {
                 .credentials(credentials)
                 .pool_config(pool)
                 .build(),
+            emails: EmailTemplates::new(),
         }
     }
 
@@ -47,77 +48,46 @@ impl Mail {
             }
         }
     }
-}
 
-/// Email message
-#[derive(Debug, Clone)]
-pub struct EmailMessage {
-    pub message: Message,
-}
-
-impl EmailMessage {
-    /// Create a new email for outlook client
-    pub fn from_outlook(
-        to: &str,
-        subject: &str,
-        plain_text: String,
-        html: String,
-    ) -> ServerResult<Self> {
-        Self::write(
-            EMAIL_DISPLAY_NAME,
-            REAPEARS_EMAIL,
-            to,
-            subject,
-            plain_text,
-            html,
-        )
+    /// Return account confirm email
+    pub fn account_confirm(
+        &self,
+        first_name: &str,
+        user_email: &str,
+        link: &str,
+    ) -> ServerResult<EmailMessage> {
+        self.emails.account_confirm(first_name, user_email, link)
     }
 
-    /// Create new multipart email
-    pub fn write(
-        display_name: &str,
-        from: &str,
-        to: &str,
-        subject: &str,
-        plain_text: String,
-        html: String,
-    ) -> ServerResult<Self> {
-        // Email plain text fallback body
-        let plain_text = SinglePart::builder()
-            .header(ContentType::TEXT_PLAIN)
-            .body(plain_text);
-
-        // Email html body
-        let html = SinglePart::builder()
-            .header(ContentType::TEXT_HTML)
-            .body(html);
-
-        let body = MultiPart::alternative()
-            .singlepart(plain_text)
-            .singlepart(html);
-
-        let Ok(message) = Message::builder()
-            .from(format!("{display_name} <{from}>").parse().unwrap())
-            .to(format!("<{to}>").parse().unwrap())
-            .subject(subject)
-            .multipart(body)
-            else{
-                return  Err(ServerError::new("Failed to build email message"));
-            };
-
-        Ok(Self { message })
+    /// Return approve email change email
+    pub fn approve_email_change(
+        &self,
+        first_name: &str,
+        user_email: &str,
+        new_email: &str,
+        code: &str,
+    ) -> ServerResult<EmailMessage> {
+        self.emails
+            .approve_email_change(first_name, user_email, new_email, code)
     }
 
-    /// Create new plain text email message
-    pub fn write_plain(from: &str, to: &str, subject: String, body: String) -> ServerResult<Self> {
-        let Ok(message) = Message::builder()
-            .from(format!("{EMAIL_DISPLAY_NAME} <{from}>").parse().unwrap())
-            .to(format!("<{to}>").parse().unwrap())
-            .subject(subject)
-            .header(ContentType::TEXT_PLAIN)
-            .body(body)else{
-            return  Err(ServerError::new("Failed to build email message"));
-        };
-        Ok(Self { message })
+    /// Return password reset email
+    pub fn password_reset(
+        &self,
+        first_name: &str,
+        user_email: &str,
+        link: &str,
+    ) -> ServerResult<EmailMessage> {
+        self.emails.password_reset(first_name, user_email, link)
+    }
+
+    /// Return verify new-email email
+    pub fn verify_new_email(
+        &self,
+        first_name: &str,
+        new_email: &str,
+        code: &str,
+    ) -> ServerResult<EmailMessage> {
+        self.emails.verify_new_email(first_name, new_email, code)
     }
 }

@@ -1,11 +1,12 @@
 //! Location model impls
-#![allow(dead_code, clippy::missing_const_for_fn)]
 
 use geo::Point;
 use serde::Serialize;
-use uuid::Uuid;
 
-use crate::{core::types::ModelIdentifier, services::produce::harvest::models::HarvestList};
+use crate::{
+    core::types::{ModelID, ModelIdentifier},
+    services::produce::harvest::models::HarvestList,
+};
 
 /// A `Vec` of locations
 pub type LocationList = Vec<LocationIndex>;
@@ -16,7 +17,7 @@ pub type LocationList = Vec<LocationIndex>;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Location {
-    pub id: Uuid,
+    pub id: ModelID,
     pub place_name: String,
     pub farm: ModelIdentifier,
     pub region: Option<String>,
@@ -31,13 +32,13 @@ impl Location {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         place_name: String,
         region: Option<String>,
         country: String,
         coords: Option<serde_json::Value>,
         description: Option<String>,
-        farm_id: Uuid,
+        farm_id: ModelID,
         farm_name: String,
         harvests: Option<HarvestList>,
     ) -> Self {
@@ -58,7 +59,7 @@ impl Location {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LocationIndex {
-    pub id: Uuid,
+    pub id: ModelID,
     pub place_name: String,
     pub farm: String,
     pub region: Option<String>,
@@ -72,7 +73,7 @@ impl LocationIndex {
     #[allow(clippy::cast_sign_loss)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         place_name: String,
         region: Option<String>,
         country: String,
@@ -91,44 +92,6 @@ impl LocationIndex {
         }
     }
 }
-
-// /// Filters for Locations
-// #[derive(Debug, Clone)]
-// pub enum LocationFilter {
-//     PlaceNameEq(Vec<String>),
-//     PlaceNameNe(Vec<String>),
-//     RegionEq(Vec<String>),
-//     RegionNe(Vec<String>),
-//     CountryEq(Vec<String>),
-//     CountryNe(Vec<String>),
-
-//     // by farm
-//     FarmIdEq(Vec<Uuid>),
-//     FarmIdNe(Vec<Uuid>),
-//     FarmNameEq(Vec<String>),
-//     FarmNameNe(Vec<String>),
-
-//     // harvest
-//     HarvestNameEq(Vec<String>),
-//     HarvestNameNe(Vec<String>),
-//     HarvestCategoryEq(Vec<String>),
-//     HarvestCategoryNe(Vec<String>),
-
-//     HarvestCountLt(i64),
-//     HarvestCountEq(Vec<i64>),
-//     HarvestCountNe(Vec<i64>),
-//     HarvestCountGt(i64),
-
-//     HarvestCreatedAtLt(Date),
-//     HarvestCreatedAtEq(Vec<Date>),
-//     HarvestCreatedAtNe(Vec<Date>),
-//     HarvestCreatedAtGt(Date),
-
-//     HarvestAvailableAtLt(Date),
-//     HarvestAvailableAtEq(Vec<Date>),
-//     HarvestAvailableAtNe(Vec<Date>),
-//     HarvestAvailableAtGt(Date),
-// }
 
 /// Try convert json value to [Point],
 #[must_use]

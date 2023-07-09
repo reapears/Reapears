@@ -1,16 +1,15 @@
 //! Farm permission impls
 
-use uuid::Uuid;
-
 use crate::{
     endpoint::{EndpointRejection, EndpointResult},
     server::state::DatabaseConnection,
+    types::ModelID,
 };
 
 /// Validate user owns the farm
 pub async fn check_user_owns_farm(
-    user_id: Uuid,
-    farm_id: Uuid,
+    user_id: ModelID,
+    farm_id: ModelID,
     db: DatabaseConnection,
 ) -> EndpointResult<()> {
     match sqlx::query!(
@@ -24,8 +23,8 @@ pub async fn check_user_owns_farm(
                 AND farm.id = $2
             )
             "#,
-        user_id,
-        farm_id
+        user_id.0,
+        farm_id.0
     )
     .fetch_one(&db.pool)
     .await

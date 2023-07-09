@@ -69,9 +69,7 @@ impl Token {
 /// Return an error if failed to parse the `hash`
 #[must_use]
 pub fn verify_token(hash: TokenHash, token: &[u8]) -> bool {
-    let saved_hash = blake3::Hash::from(hash);
-    let client_hash = blake3::hash(token);
-    saved_hash == client_hash
+    blake3::Hash::from(hash) == blake3::hash(token)
 }
 
 impl std::fmt::Debug for Token {

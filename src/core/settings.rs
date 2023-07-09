@@ -1,48 +1,31 @@
 //! Server settings definitions
 
-//! TODO: Clean up these function once lazy
-//! initialization is stabilized in stable rust
-
 /// Server domain name
 pub const SERVER_DOMAIN: &str = "http://localhost:3000";
 
-// ---Paths---
+// ===== Paths ======
 
 /// Server home directory
 pub const HOME_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
 /// Server media files root directory
-#[must_use]
-pub fn media_root() -> String {
-    format!("{HOME_DIR}/media")
-}
+pub const MEDIA_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/media");
 
 /// Server static files root directory
-#[must_use]
-pub fn static_root() -> String {
-    format!("{HOME_DIR}/static")
-}
+pub const STATIC_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/static");
 
-/// User profile photo directory
-#[must_use]
-pub fn user_uploads_dir() -> String {
-    format!("{}/uploads/user", media_root())
-}
+/// Users profile photo uploads directory
+pub const USER_UPLOAD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/media/uploads/user");
 
-/// Cultivar image files directory
-#[must_use]
-pub fn cultivar_uploads_dir() -> String {
-    format!("{}/uploads/cultivar", media_root())
-}
+/// Cultivars image file uploads directory
+pub const CULTIVAR_UPLOAD_DIR: &str =
+    concat!(env!("CARGO_MANIFEST_DIR"), "/media/uploads/cultivar");
 
-/// Harvest image files directory
-#[must_use]
-pub fn harvest_uploads_dir() -> String {
-    format!("{}/uploads/harvest", media_root())
-}
+/// Harvests image file uploads directory
+pub const HARVEST_UPLOAD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/media/uploads/harvest");
 
 /// File not found html response
-#[must_use]
-pub fn upload_not_found_file() -> String {
-    format!("{}/uploads/upload_not_found.html", media_root())
-}
+pub const FILE_NOT_FOUND_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/media/uploads/upload_not_found.html"
+);

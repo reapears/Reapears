@@ -1,12 +1,13 @@
 //! Session database impls
 
-use uuid::Uuid;
-
-use crate::{auth::TokenHash, error::ServerResult, server::state::DatabaseConnection};
+use crate::{
+    auth::TokenHash, error::ServerResult, server::state::DatabaseConnection, types::ModelID,
+};
 
 use super::{
     forms::{SessionInsert, SessionUpdate},
     models::{LoginUser, Session},
+    utils::update_last_login,
 };
 
 impl Session {
@@ -36,7 +37,7 @@ impl Session {
             Ok(rec) => {
                 let user = rec.map(|rec| {
                     LoginUser::from_row(
-                        rec.user_id,
+                        rec.user_id.into(),
                         rec.phc_string,
                         rec.account_locked,
                         rec.account_locked_reason,
@@ -55,7 +56,8 @@ impl Session {
 
     /// Insert a new session into the database.
     #[tracing::instrument(name = "Insert Session", skip(db, session))]
-    pub async fn insert(session: SessionInsert, db: DatabaseConnection) -> ServerResult<Uuid> {
+    pub async fn insert(session: SessionInsert, db: DatabaseConnection) -> ServerResult<ModelID> {
+        let mut tx = db.pool.begin().await?;
         match sqlx::query!(
             r#"
                 INSERT INTO auth.sessions(
@@ -68,18 +70,23 @@ impl Session {
                 )
                 VALUES($1, $2, $3, $4, $5, $6);
             "#,
-            session.id,
-            session.user_id,
+            session.id.0,
+            session.user_id.0,
             &session.token,
             session.user_agent,
             session.created_at,
             session.last_used_at
         )
-        .execute(&db.pool)
+        .execute(&mut *tx)
         .await
         {
             Ok(result) => {
+                // Update user last login date
+                update_last_login(session.user_id, &mut tx).await?;
+
+                tx.commit().await?;
                 tracing::debug!("Session inserted successfully: {:?}", result);
+
                 Ok(session.id)
             }
             Err(err) => {

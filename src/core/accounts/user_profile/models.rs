@@ -2,9 +2,10 @@
 
 use serde::Serialize;
 use time::Date;
-use uuid::Uuid;
 
-use crate::{accounts::user::models::UserIndex, services::farmers::farm::models::Farm};
+use crate::{
+    accounts::user::models::UserIndex, services::farmers::farm::models::Farm, types::ModelID,
+};
 
 /// The model representing a row in the `user_profiles` database table.
 ///
@@ -24,7 +25,7 @@ impl UserProfile {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn from_row(
-        user_id: Uuid,
+        user_id: ModelID,
         first_name: String,
         last_name: Option<String>,
         about: String,

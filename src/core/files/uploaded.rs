@@ -2,25 +2,26 @@
 
 use axum::extract::multipart::Field;
 use camino::{Utf8Path, Utf8PathBuf};
-use uuid::Uuid;
 
-use crate::{db, endpoint::EndpointRejection, error::ServerResult};
+use crate::{endpoint::EndpointRejection, error::ServerResult, types::ModelID};
 
 /// Raw file uploaded via `Multipart`
 #[derive(Clone, Debug)]
 pub struct UploadedFile {
     /// file unique id
-    pub id: Uuid,
+    pub id: ModelID,
     /// file name without extension
     pub stem: String,
     /// file name extension
     pub ext: String,
-    pub content: Vec<u8>,
+    // pub content: Vec<u8>,
+    pub content: bytes::Bytes,
     pub content_type: String,
     pub field_name: Option<String>,
 }
 
 impl UploadedFile {
+    /// Decode
     #[tracing::instrument(fields(file_name, content_type))]
     pub async fn try_from_field<'a>(field: Field<'a>) -> Result<Self, EndpointRejection> {
         let Some(file_name) = field.file_name() else{
@@ -50,17 +51,15 @@ impl UploadedFile {
         let field_name = field.name().map(std::borrow::ToOwned::to_owned);
 
         let content = match field.bytes().await {
-            Ok(bytes) => bytes.to_vec(),
+            Ok(bytes) => bytes,
             Err(err) => {
                 tracing::error!("Uploaded file bytes error: `{:?}`", err);
                 return Err(EndpointRejection::BadRequest(err.to_string().into()));
             }
         };
 
-        let file_id = db::model_id();
-
         Ok(Self {
-            id: file_id,
+            id: ModelID::new(),
             stem: file_stem,
             ext: file_ext,
             content,

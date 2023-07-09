@@ -2,7 +2,6 @@
 
 use camino::Utf8PathBuf;
 use itertools::Itertools;
-use uuid::Uuid;
 
 use crate::{
     error::ServerResult,
@@ -12,6 +11,7 @@ use crate::{
         farmers::{farm::models::Farm, location::models::Location},
         produce::harvest::models::HarvestIndex,
     },
+    types::ModelID,
 };
 
 use super::{forms::UserProfileUpdateData, models::UserProfile};
@@ -20,7 +20,7 @@ use super::{forms::UserProfileUpdateData, models::UserProfile};
 impl UserProfile {
     /// Fetch user-profile from the database
     #[tracing::instrument(skip(db), name = "Find UserProfile")]
-    pub async fn find(id: Uuid, db: DatabaseConnection) -> ServerResult<Option<Self>> {
+    pub async fn find(id: ModelID, db: DatabaseConnection) -> ServerResult<Option<Self>> {
         match sqlx::query!(
             r#"
             SELECT user_.id AS user_id,
@@ -32,6 +32,9 @@ impl UserProfile {
                 profile.lives_at AS user_lives_at,
                 farm.id AS "farm_id?",
                 farm.name AS "farm_name?",
+                farm.logo AS "farm_logo",
+                farm.contact_email AS "farm_contact_email",
+                farm.contact_number AS "farm_contact_number",
                 farm.registered_on AS "farm_registered_on?",
                 location_.id AS "location_id?",
                 location_.place_name AS "location_place_name?",
@@ -64,7 +67,7 @@ impl UserProfile {
             WHERE user_.id = $1
             ORDER BY harvest.created_at
         "#,
-            id
+            id.0
         )
         .fetch_all(&db.pool)
         .await
@@ -73,13 +76,12 @@ impl UserProfile {
             Ok(records) => {
                 let first_rec = &records[0];
 
-                let user_id = first_rec.user_id;
+                let user_id = first_rec.user_id.into();
                 let first_name = first_rec.user_first_name.clone();
                 let last_name = first_rec.user_last_name.clone();
                 let about = first_rec.user_about.clone().unwrap_or_default();
                 let photo = first_rec.user_photo.clone();
                 let lives_at = first_rec.user_lives_at.clone();
-
                 let date_joined = first_rec.user_date_joined.date();
 
                 let mut farms = Vec::new();
@@ -94,6 +96,9 @@ impl UserProfile {
                     let first_rec = &farm_group[0];
 
                     let farm_name = first_rec.farm_name.clone().unwrap();
+                    let farm_logo = first_rec.farm_logo.clone();
+                    let farm_contact_email = first_rec.farm_contact_email.clone();
+                    let farm_contact_number = first_rec.farm_contact_number.clone();
                     let registered_on = first_rec.farm_registered_on.unwrap();
 
                     // Create farm locations
@@ -118,7 +123,7 @@ impl UserProfile {
                                 .filter(|rec| rec.harvest_id.is_some())
                                 .map(|rec| {
                                     HarvestIndex::from_row(
-                                        rec.harvest_id.unwrap(),
+                                        rec.harvest_id.unwrap().into(),
                                         rec.harvest_price.unwrap(),
                                         rec.harvest_available_at.unwrap(),
                                         rec.harvest_images,
@@ -134,13 +139,13 @@ impl UserProfile {
                             let harvests = (!harvests.is_empty()).then_some(harvests);
 
                             locations.push(Location::from_row(
-                                location_id,
+                                location_id.into(),
                                 place_name,
                                 region,
                                 country,
                                 coords,
                                 description,
-                                farm_id,
+                                farm_id.into(),
                                 farm_name.clone(),
                                 harvests,
                             ));
@@ -149,8 +154,11 @@ impl UserProfile {
                     };
 
                     farms.push(Farm::from_row(
-                        farm_id,
+                        farm_id.into(),
                         farm_name,
+                        farm_logo,
+                        farm_contact_email,
+                        farm_contact_number,
                         farm_locations,
                         registered_on,
                         user_id,
@@ -186,7 +194,7 @@ impl UserProfile {
     /// Insert user-profile in the database
     #[tracing::instrument(skip(tx), name = "Insert UserProfile")]
     pub async fn insert_default(
-        user_id: Uuid,
+        user_id: ModelID,
         tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ) -> ServerResult<()> {
         let profile = UserProfileUpdateData::default();
@@ -199,11 +207,11 @@ impl UserProfile {
                 )
                 VALUES($1, $2, $3)
             "#,
-            user_id,
+            user_id.0,
             profile.about,
             profile.lives_at,
         )
-        .execute(tx)
+        .execute(&mut **tx)
         .await
         {
             Ok(result) => {
@@ -223,7 +231,7 @@ impl UserProfile {
     /// Insert or Update user-profile in the database
     #[tracing::instrument(skip(db, values), name = "Insert or Update UserProfile")]
     pub async fn create_or_update(
-        id: Uuid,
+        id: ModelID,
         values: UserProfileUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -240,7 +248,7 @@ impl UserProfile {
                 DO UPDATE SET about = EXCLUDED.about,
                             lives_at = EXCLUDED.lives_at;
             "#,
-            id,
+            id.0,
             values.about,
             values.lives_at,
         )
@@ -261,7 +269,7 @@ impl UserProfile {
     /// Insert user profile photo-path into the database
     #[tracing::instrument(skip(db), name = "Insert profile photo-path")]
     pub async fn insert_photo(
-        id: Uuid,
+        id: ModelID,
         paths: Vec<Utf8PathBuf>,
         db: DatabaseConnection,
     ) -> ServerResult<(String, Option<String>)> {
@@ -279,7 +287,7 @@ impl UserProfile {
                 ) AS old_photo
            "#,
             path,
-            id
+            id.0
         )
         .fetch_one(&db.pool)
         .await

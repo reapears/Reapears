@@ -1,9 +1,10 @@
 //! SMTP email sender impls
 
-pub mod emails;
+mod emails;
 mod mailer;
+mod message;
 
-pub use mailer::{EmailMessage, Mail};
+pub use mailer::Mail;
 
 /// Microsoft outlook mail smtp STARTTLS server
 const OUTLOOK_SMTP_SERVER: &str = "smtp.office365.com";

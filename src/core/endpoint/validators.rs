@@ -2,29 +2,6 @@
 
 use super::{EndpointRejection, EndpointResult};
 use tokio::task::{AbortHandle, JoinSet};
-use uuid::Uuid;
-
-/// Try parse uuid from string
-///
-/// # Errors
-///
-/// Return an error if failed to parse `ìd` to Uuid
-pub fn parse_uuid(id: &str, err_msg: &'static str, trace_msg: &str) -> EndpointResult<Uuid> {
-    Uuid::parse_str(id).map_err(|err| {
-        tracing::error!("{trace_msg}, failed to parse Uuid: {}", err);
-        EndpointRejection::BadRequest(err_msg.into())
-    })
-}
-
-/// Forcibly try parse Uuid, panic it fails
-///
-/// # Panics
-///
-/// Panics if failed to parse `id`
-#[must_use]
-pub fn unwrap_uuid(id: &str) -> Uuid {
-    Uuid::parse_str(id).unwrap()
-}
 
 /// Wait for all validation tasks to complete
 ///

@@ -1,15 +1,13 @@
 //! User profile database impl
 
-use uuid::Uuid;
-
-use crate::{error::ServerResult, server::state::DatabaseConnection};
+use crate::{error::ServerResult, server::state::DatabaseConnection, types::ModelID};
 
 use super::{forms::PersonalInfoUpdateData, models::PersonalInfo};
 
 impl PersonalInfo {
     /// Find and return user `PersonalInfo` matching the `id` from the database.
     #[tracing::instrument(skip(db), name = "Find PersonalInfo")]
-    pub async fn find(id: Uuid, db: DatabaseConnection) -> ServerResult<Option<Self>> {
+    pub async fn find(id: ModelID, db: DatabaseConnection) -> ServerResult<Option<Self>> {
         match sqlx::query!(
             r#"
                 SELECT user_.id AS user_id,
@@ -31,14 +29,14 @@ impl PersonalInfo {
 
                 WHERE user_.id = $1;
             "#,
-            id
+            id.0
         )
         .fetch_one(&db.pool)
         .await
         {
             Ok(rec) => {
                 let personal_info = Self::from_row(
-                    rec.user_id,
+                    rec.user_id.into(),
                     rec.user_first_name,
                     rec.user_last_name,
                     rec.user_gender,
@@ -70,7 +68,7 @@ impl PersonalInfo {
     /// Caller must validate the `id` exists
     #[tracing::instrument(skip(db, values), name = "Update PersonalInfo")]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         values: PersonalInfoUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -87,7 +85,7 @@ impl PersonalInfo {
             values.last_name,
             values.gender,
             values.date_of_birth,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await

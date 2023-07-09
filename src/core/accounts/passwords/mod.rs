@@ -1,12 +1,12 @@
 //! Password related utilities impls
 
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
-use uuid::Uuid;
 
 use crate::{
     auth::{cookies::PASSWORD_VERIFIED, verify_password},
     error::{ServerError, ServerResult},
     server::state::DatabaseConnection,
+    types::ModelID,
 };
 
 pub mod db;
@@ -28,7 +28,7 @@ pub struct PasswordModel;
 ///
 /// Return database error
 pub async fn check_password(
-    user_id: Uuid,
+    user_id: ModelID,
     password: String,
     db: DatabaseConnection,
 ) -> ServerResult<bool> {

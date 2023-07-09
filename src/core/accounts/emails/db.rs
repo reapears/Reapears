@@ -1,9 +1,10 @@
 //! Email database impls
 
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use crate::{auth::TokenHash, error::ServerResult, server::state::DatabaseConnection};
+use crate::{
+    auth::TokenHash, error::ServerResult, server::state::DatabaseConnection, types::ModelID,
+};
 
 use super::{
     forms::{EmailInsertData, EmailInsertPendingData},
@@ -16,7 +17,7 @@ impl EmailModel {
     pub async fn find_by_token(
         token: TokenHash,
         db: DatabaseConnection,
-    ) -> ServerResult<Option<(Uuid, String, Option<OffsetDateTime>)>> {
+    ) -> ServerResult<Option<(ModelID, String, Option<OffsetDateTime>)>> {
         match sqlx::query!(
             r#"
                 SELECT user_id,
@@ -31,7 +32,7 @@ impl EmailModel {
         .fetch_optional(&db.pool)
         .await
         {
-            Ok(rec) => Ok(rec.map(|rec| (rec.user_id, rec.email, rec.token_generated_at))),
+            Ok(rec) => Ok(rec.map(|rec| (rec.user_id.into(), rec.email, rec.token_generated_at))),
             Err(err) => {
                 tracing::error!("Database error, failed to find email by token: {}", err);
                 Err(err.into())
@@ -42,7 +43,7 @@ impl EmailModel {
     /// Fetches the user `first_name` and `email` from the database
     #[tracing::instrument(skip(db))]
     pub async fn find_user(
-        user_id: Uuid,
+        user_id: ModelID,
         db: DatabaseConnection,
     ) -> ServerResult<(String, String)> {
         match sqlx::query!(
@@ -54,7 +55,7 @@ impl EmailModel {
                     ON user_.id = address.user_id
                 WHERE user_.id = $1
             "#,
-            user_id
+            user_id.0
         )
         .fetch_one(&db.pool)
         .await
@@ -109,7 +110,7 @@ impl EmailModel {
     /// Insert user email into the database
     #[tracing::instrument(skip(tx, values), name = "Insert Email")]
     pub async fn insert(
-        user_id: Uuid,
+        user_id: ModelID,
         values: EmailInsertData,
         tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ) -> ServerResult<()> {
@@ -124,13 +125,13 @@ impl EmailModel {
                 )
                  VALUES($1, $2, $3, $4, $5);
               "#,
-            user_id,
+            user_id.0,
             values.verified,
             values.email,
             &values.token[..],
             values.token_generated_at,
         )
-        .execute(tx)
+        .execute(&mut **tx)
         .await
         {
             Ok(result) => {
@@ -149,7 +150,7 @@ impl EmailModel {
 
     /// Updates user email in the database
     #[tracing::instrument(skip(user_id, db), name = "Update Email")]
-    pub async fn update(user_id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn update(user_id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 UPDATE accounts.emails AS address
@@ -162,7 +163,7 @@ impl EmailModel {
                     
                 WHERE user_id = $1;
             "#,
-            user_id
+            user_id.0
         )
         .execute(&db.pool)
         .await
@@ -181,7 +182,7 @@ impl EmailModel {
     /// Insert user email into the database
     #[tracing::instrument(skip(db, values), name = "Insert email pending update")]
     pub async fn insert_pending_update(
-        user_id: Uuid,
+        user_id: ModelID,
         values: EmailInsertPendingData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -191,16 +192,25 @@ impl EmailModel {
                     id,
                     user_id,
                     new_email, 
-                    token, 
-                    token_generated_at
+                    previous_email_approval_code, 
+                    email_change_approved,
+                    generated_at
                 )
-                 VALUES($1, $2, $3, $4, $5);
+                 VALUES($1, $2, $3, $4, $5, $6)
+
+                ON CONFLICT ON CONSTRAINT email_pending_updates_user_id_key
+                DO UPDATE SET new_email = EXCLUDED.new_email,
+                    previous_email_approval_code = EXCLUDED.previous_email_approval_code, 
+                    new_email_verify_token = NULL,
+                    email_change_approved = EXCLUDED.email_change_approved,
+                    generated_at = EXCLUDED.generated_at;
               "#,
-            values.id,
-            user_id,
+            values.id.0,
+            user_id.0,
             values.new_email,
-            &values.token[..],
-            values.token_generated_at,
+            &values.previous_email_approval_code[..],
+            &values.email_change_approved,
+            values.generated_at,
         )
         .execute(&db.pool)
         .await
@@ -249,31 +259,138 @@ impl EmailModel {
         }
     }
 
-    /// Checks if the email pending update exists in the database
-    #[tracing::instrument(skip(db, user_id, code), name = "Check email update exists")]
-    pub async fn pending_update_exists(
-        user_id: Uuid,
-        code: TokenHash,
+    /// Approve email change into the database
+    ///
+    /// Return true if the approval code is exists
+    #[tracing::instrument(skip(db, approval_hash), name = "Approve email pending update")]
+    pub async fn approve_pending_update(
+        approval_hash: TokenHash,
         db: DatabaseConnection,
-    ) -> ServerResult<bool> {
+    ) -> ServerResult<Option<String>> {
         match sqlx::query!(
             r#"
-                 SELECT EXISTS(
-                     SELECT 1 FROM accounts.email_pending_updates pending
-                     WHERE pending.user_id = $1
-                        AND pending.token = $2
-                 ) AS "exists!"
-             "#,
-            user_id,
-            &code
+                UPDATE accounts.email_pending_updates pending
+                    SET email_change_approved = TRUE
+                WHERE pending.previous_email_approval_code = $1
+
+                RETURNING pending.new_email
+                  "#,
+            &approval_hash[..]
         )
         .fetch_one(&db.pool)
         .await
         {
-            Ok(result) => Ok(result.exists),
+            Ok(row) => {
+                tracing::debug!("Email change approved");
+                Ok(Some(row.new_email))
+            }
+            Err(err) => {
+                if matches!(err, sqlx::Error::RowNotFound) {
+                    Ok(None)
+                } else {
+                    tracing::error!(
+                        "Database error, failed to update email pending update approval: {}",
+                        err
+                    );
+                    Err(err.into())
+                }
+            }
+        }
+    }
+
+    /// Insert new email verify code in the database
+    #[tracing::instrument(skip(user_id, db), name = "Insert new email verify code")]
+    pub async fn insert_new_email_verify_code(
+        user_id: ModelID,
+        verify_hash: TokenHash,
+        db: DatabaseConnection,
+    ) -> ServerResult<()> {
+        match sqlx::query!(
+            r#"
+                UPDATE accounts.email_pending_updates pending
+                SET new_email_verify_token = $1
+                WHERE pending.user_id = $2
+             "#,
+            &verify_hash[..],
+            user_id.0
+        )
+        .execute(&db.pool)
+        .await
+        {
+            Ok(result) => {
+                tracing::debug!(
+                    "New email verification inserted code successfully: {:?}",
+                    result
+                );
+                Ok(())
+            }
             Err(err) => {
                 tracing::error!(
-                    "Database error, failed to check if email pending update exists: {}",
+                    "Database error, failed to insert new email verification code: {}",
+                    err
+                );
+                Err(err.into())
+            }
+        }
+    }
+
+    /// Verify new email token in the database
+    ///
+    /// Return true if the token is exists
+    #[tracing::instrument(skip(db, verify_hash), name = "Verify new email pending update")]
+    pub async fn verify_pending_update(
+        verify_hash: TokenHash,
+        db: DatabaseConnection,
+    ) -> ServerResult<bool> {
+        match sqlx::query!(
+            r#"
+                SELECT EXISTS(
+                    SELECT 1 FROM accounts.email_pending_updates pending
+                    WHERE new_email_verify_token = $1
+                        AND email_change_approved = TRUE
+                ) AS "exists!"
+                  "#,
+            &verify_hash[..]
+        )
+        .fetch_one(&db.pool)
+        .await
+        {
+            Ok(result) => {
+                tracing::debug!("New email pending update verified: {:?}", result);
+                Ok(result.exists)
+            }
+            Err(err) => {
+                tracing::error!(
+                    "Database error, failed to verify new email pending update: {}",
+                    err
+                );
+                Err(err.into())
+            }
+        }
+    }
+
+    /// Deletes email pending updates from the database
+    pub async fn delete_pending_updates(
+        user_id: ModelID,
+        db: DatabaseConnection,
+    ) -> ServerResult<()> {
+        match sqlx::query!(
+            r#"
+                DELETE FROM accounts.email_pending_updates pending
+                WHERE pending.id = $1;
+            "#,
+            user_id.0
+        )
+        .execute(&db.pool)
+        .await
+        {
+            Ok(result) => {
+                tracing::error!("Email pending updates deleted successfully: {:?}", result);
+                Ok(())
+            }
+            Err(err) => {
+                tracing::error!(
+                    "Database error, failed to delete email pending updates: {}",
                     err
                 );
                 Err(err.into())

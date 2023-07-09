@@ -1,14 +1,15 @@
 //! Password forms impls
 
-use axum::async_trait;
+use axum::{
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, Json},
+    http::Request,
+};
 use serde::Deserialize;
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    auth::hash_password,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidateForm},
-    error::ServerResult,
+    auth::hash_password, endpoint::EndpointRejection, error::ServerResult,
     server::state::ServerState,
 };
 
@@ -19,15 +20,18 @@ pub struct PasswordVerifyForm {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for PasswordVerifyForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate PasswordVerifyForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
-            Ok(()) => Ok(self),
+impl<B> FromRequest<ServerState, B> for PasswordVerifyForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
+        match input.validate() {
+            Ok(()) => Ok(input),
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
     }
@@ -51,15 +55,18 @@ impl PasswordChangeForm {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for PasswordChangeForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate PasswordChangeForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
-            Ok(()) => Ok(self),
+impl<B> FromRequest<ServerState, B> for PasswordChangeForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
+        match input.validate() {
+            Ok(()) => Ok(input),
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
     }
@@ -74,15 +81,18 @@ pub struct PasswordForgotForm {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for PasswordForgotForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate PasswordForgotForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
-            Ok(()) => Ok(self),
+impl<B> FromRequest<ServerState, B> for PasswordForgotForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
+        match input.validate() {
+            Ok(()) => Ok(input),
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
     }
@@ -105,15 +115,18 @@ impl PasswordResetForm {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for PasswordResetForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate PasswordResetForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
-            Ok(()) => Ok(self),
+impl<B> FromRequest<ServerState, B> for PasswordResetForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
+        match input.validate() {
+            Ok(()) => Ok(input),
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
     }

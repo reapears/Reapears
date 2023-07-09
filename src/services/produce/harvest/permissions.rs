@@ -1,10 +1,9 @@
 //! Harvest permission impls
 
-use uuid::Uuid;
-
 use crate::{
     endpoint::{EndpointRejection, EndpointResult},
     server::state::DatabaseConnection,
+    types::ModelID,
 };
 
 /// Validate user owns the harvest
@@ -13,8 +12,8 @@ use crate::{
 ///
 /// Return an error if user and harvest cannot be found
 pub async fn check_user_owns_harvest(
-    user_id: Uuid,
-    harvest_id: Uuid,
+    user_id: ModelID,
+    harvest_id: ModelID,
     db: DatabaseConnection,
 ) -> EndpointResult<()> {
     match sqlx::query!(
@@ -32,8 +31,8 @@ pub async fn check_user_owns_harvest(
                 AND harvest.id = $2
             )
             "#,
-        user_id,
-        harvest_id
+        user_id.0,
+        harvest_id.0
     )
     .fetch_one(&db.pool)
     .await
@@ -56,9 +55,9 @@ pub async fn check_user_owns_harvest(
 ///
 /// Return an error if user and harvest cannot be found
 pub async fn check_user_can_update_harvest(
-    user_id: Uuid,
-    location_id: Uuid,
-    harvest_id: Uuid,
+    user_id: ModelID,
+    location_id: ModelID,
+    harvest_id: ModelID,
     db: DatabaseConnection,
 ) -> EndpointResult<()> {
     match sqlx::query!(
@@ -77,9 +76,9 @@ pub async fn check_user_can_update_harvest(
                 AND harvest.id = $3
             )
             "#,
-        user_id,
-        location_id,
-        harvest_id
+        user_id.0,
+        location_id.0,
+        harvest_id.0
     )
     .fetch_one(&db.pool)
     .await

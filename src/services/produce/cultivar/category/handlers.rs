@@ -5,12 +5,11 @@ use axum::{
     http::StatusCode,
 };
 
-use uuid::Uuid;
-
 use crate::{
-    auth::CurrentUser,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidatedJson},
+    auth::AdminUser,
+    endpoint::{EndpointRejection, EndpointResult},
     server::state::DatabaseConnection,
+    types::ModelID,
 };
 
 use super::{forms::CultivarCategoryForm, CategoryList, CultivarCategory};
@@ -27,55 +26,43 @@ pub async fn cultivar_category_list(
 }
 
 /// Handles the `POST /cultivars/categories` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user, form))]
 pub async fn cultivar_category_create(
-    current_user: CurrentUser,
+    #[allow(unused_variables)] user: AdminUser,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<CultivarCategoryForm>,
+    form: CultivarCategoryForm,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_staff {
-        CultivarCategory::insert(form.into(), db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_id| Ok(StatusCode::CREATED),
-        )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    CultivarCategory::insert(form.into(), db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_id| Ok(StatusCode::CREATED),
+    )
 }
 
 /// Handles the `PUT /cultivars/categories/:category_id` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user, form))]
 pub async fn cultivar_category_update(
-    current_user: CurrentUser,
-    ModelId(category_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: AdminUser,
+    category_id: ModelID,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<CultivarCategoryForm>,
+    form: CultivarCategoryForm,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_staff {
-        CultivarCategory::update(category_id, form.into(), db)
-            .await
-            .map_or_else(
-                |_err| Err(EndpointRejection::internal_server_error()),
-                |_| Ok(StatusCode::OK),
-            )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    CultivarCategory::update(category_id, form.into(), db)
+        .await
+        .map_or_else(
+            |_err| Err(EndpointRejection::internal_server_error()),
+            |_| Ok(StatusCode::OK),
+        )
 }
 
 /// Handles the `DELETE /cultivars/categories/:category_id` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user))]
 pub async fn cultivar_category_delete(
-    current_user: CurrentUser,
-    ModelId(category_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: AdminUser,
+    category_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_staff {
-        CultivarCategory::delete(category_id, db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::NO_CONTENT),
-        )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    CultivarCategory::delete(category_id, db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_| Ok(StatusCode::NO_CONTENT),
+    )
 }

@@ -1,11 +1,10 @@
 //! Location helpers impls
 
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{
     error::ServerResult, server::state::DatabaseConnection,
-    services::produce::harvest::harvest_max_age,
+    services::produce::harvest::harvest_max_age, types::ModelID,
 };
 
 /// Delete location from the database
@@ -14,7 +13,7 @@ use crate::{
 ///
 /// Return database error
 pub async fn delete_location(
-    location_id: Uuid,
+    location_id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
     match sqlx::query!(
@@ -22,9 +21,9 @@ pub async fn delete_location(
             DELETE FROM services.locations location_
             WHERE location_.id = $1
         "#,
-        location_id
+        location_id.0
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -47,7 +46,7 @@ pub async fn delete_location(
 ///
 /// Return database error
 pub async fn archive_location(
-    location_id: Uuid,
+    location_id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
     match sqlx::query!(
@@ -58,9 +57,9 @@ pub async fn archive_location(
             WHERE location_.id = $2
         "#,
         OffsetDateTime::now_utc().date(),
-        location_id
+        location_id.0
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -82,7 +81,10 @@ pub async fn archive_location(
 /// # Errors
 ///
 /// Return database error
-pub async fn farm_location_count(location_id: Uuid, db: DatabaseConnection) -> ServerResult<i64> {
+pub async fn farm_location_count(
+    location_id: ModelID,
+    db: DatabaseConnection,
+) -> ServerResult<i64> {
     match sqlx::query!(
         r#"
             SELECT COUNT(location_.id) AS "location_count!"
@@ -94,7 +96,7 @@ pub async fn farm_location_count(location_id: Uuid, db: DatabaseConnection) -> S
                 WHERE location_.id = $1
             )
         "#,
-        location_id
+        location_id.0
     )
     .fetch_one(&db.pool)
     .await
@@ -116,16 +118,16 @@ pub async fn farm_location_count(location_id: Uuid, db: DatabaseConnection) -> S
 ///
 /// Return database error
 pub async fn location_harvest_photos(
-    location_id: Uuid,
+    location_id: ModelID,
     db: DatabaseConnection,
-) -> ServerResult<Vec<serde_json::Value>> {
+) -> ServerResult<Vec<Vec<String>>> {
     match sqlx::query!(
         r#"
             SELECT harvest.images
             FROM services.active_harvests harvest
             WHERE harvest.location_id = $1
         "#,
-        location_id
+        location_id.0
     )
     .fetch_all(&db.pool)
     .await
@@ -147,7 +149,7 @@ pub async fn location_harvest_photos(
 ///
 /// Return database error
 pub async fn location_archived_harvest_count(
-    location_id: Uuid,
+    location_id: ModelID,
     db: DatabaseConnection,
 ) -> ServerResult<i64> {
     match sqlx::query!(
@@ -159,7 +161,7 @@ pub async fn location_archived_harvest_count(
             
             WHERE location_.id = $1 AND harvest.finished = true;
         "#,
-        location_id
+        location_id.0
     )
     .fetch_one(&db.pool)
     .await
@@ -181,7 +183,7 @@ pub async fn location_archived_harvest_count(
 ///
 /// Return database error
 pub async fn delete_location_harvests(
-    location_id: Uuid,
+    location_id: ModelID,
     finished_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
@@ -196,11 +198,11 @@ pub async fn delete_location_harvests(
                     harvest.created_at > $3
                 )
         "#,
-        location_id,
+        location_id.0,
         finished_at.date(),
         max_age,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -223,7 +225,7 @@ pub async fn delete_location_harvests(
 ///
 /// Return database error
 pub async fn archive_location_harvests(
-    location_id: Uuid,
+    location_id: ModelID,
     finished_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
@@ -242,10 +244,10 @@ pub async fn archive_location_harvests(
                 )
         "#,
         finished_at.date(),
-        location_id,
+        location_id.0,
         max_age,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {

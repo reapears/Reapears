@@ -1,0 +1,14 @@
+Hey, {{first_name}}!
+
+A request has been received to change the email for your Reapears account
+to this new {{new_email}}.
+
+Please use the following security code to approve the request.
+
+Security code: {{code}}
+
+If you did not request a email account change, you can safely ignore this email.
+Only the person with access to your email can approve the request to change your account email.
+
+Thanks,
+The Reapears team

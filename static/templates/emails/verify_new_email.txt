@@ -1,0 +1,12 @@
+Almost done, {{first_name}}!
+
+We just need to verify your new email address: {{new_email}}
+
+
+Please use the following security code to verify your email.
+
+Security code: {{code}}
+
+
+Thanks,
+The Reapears team

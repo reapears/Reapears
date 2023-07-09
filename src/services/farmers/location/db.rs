@@ -1,12 +1,12 @@
 //! Location database impl
 
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{
     error::{ServerError, ServerResult},
     server::state::DatabaseConnection,
     services::produce::harvest::{delete_harvest_photos_list, models::HarvestIndex},
+    types::ModelID,
     types::{ModelIdentifier, ModelIndex, Pagination},
 };
 
@@ -59,7 +59,7 @@ impl Location {
                     .into_iter()
                     .map(|rec| {
                         LocationIndex::from_row(
-                            rec.location_id,
+                            rec.location_id.into(),
                             rec.location_place_name,
                             rec.location_region,
                             rec.location_country,
@@ -82,7 +82,7 @@ impl Location {
     /// Fetches farm location detail from the database
     #[tracing::instrument(name = "Find Location", skip(db))]
     pub async fn find(
-        id: Uuid,
+        id: ModelID,
         pg: Option<Pagination>,
         db: DatabaseConnection,
     ) -> ServerResult<Option<Self>> {
@@ -119,7 +119,7 @@ impl Location {
                 LIMIT $2
                 OFFSET $3;
             "#,
-            id,
+            id.0,
             limit,
             offset
         )
@@ -130,8 +130,8 @@ impl Location {
             Ok(records) => {
                 let first_rec = &records[0];
 
-                let location_id = first_rec.location_id;
-                let farm_id = first_rec.farm_id;
+                let location_id = first_rec.location_id.into();
+                let farm_id = first_rec.farm_id.into();
                 let farm_name = first_rec.farm_name.clone();
                 let place_name = first_rec.location_place_name.clone();
                 let region = first_rec.location_region.clone();
@@ -144,7 +144,7 @@ impl Location {
                     .filter(|rec| rec.harvest_id.is_some())
                     .map(|rec| {
                         HarvestIndex::from_row(
-                            rec.harvest_id.unwrap(),
+                            rec.harvest_id.unwrap().into(),
                             rec.harvest_price.unwrap(),
                             rec.harvest_available_at.unwrap(),
                             rec.harvest_images,
@@ -185,7 +185,7 @@ impl Location {
     pub async fn insert(
         location: LocationInsertData,
         db: DatabaseConnection,
-    ) -> ServerResult<Uuid> {
+    ) -> ServerResult<ModelID> {
         match sqlx::query!(
             r#"
                 INSERT INTO services.locations(
@@ -201,11 +201,11 @@ impl Location {
                 )
                  VALUES($1, $2, $3, $4, $5, $6, $7, false, $8);
             "#,
-            location.id,
-            location.farm_id,
+            location.id.0,
+            location.farm_id.0,
             location.place_name,
-            location.region_id,
-            location.country_id,
+            location.region_id.0,
+            location.country_id.0,
             location.description,
             location.coords,
             location.created_at,
@@ -227,7 +227,7 @@ impl Location {
     /// Updates farm location in the database
     #[tracing::instrument(name = "Update Location", skip(db, location))]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         location: LocationUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -242,11 +242,11 @@ impl Location {
                 WHERE location.id = $6;
             "#,
             location.place_name,
-            location.region_id,
-            location.country_id,
+            location.region_id.map(|id| id.0),
+            location.country_id.map(|id| id.0),
             location.description,
             location.coords,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await
@@ -268,7 +268,7 @@ impl Location {
     /// and it does not have any harvests incl archived ones
     #[tracing::instrument(name = "Delete Location", skip(db))]
     #[allow(clippy::cast_sign_loss)]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         let location_count = farm_location_count(id, db.clone()).await?;
         // Cannot delete farm's only location
         if location_count == LOCATION_MIN_COUNT_TO_DELETE {
@@ -276,13 +276,17 @@ impl Location {
             return Err(ServerError::new("Cannot delete farms only location"));
         }
 
-        let conn = db.clone();
-        let image_paths =
-            tokio::spawn(async move { location_harvest_photos(id, conn).await }).await??;
+        let image_paths = tokio::spawn({
+            let db = db.clone();
+            async move { location_harvest_photos(id, db).await }
+        })
+        .await??;
 
-        let conn = db.clone();
-        let old_archived_harvest_count =
-            tokio::spawn(async move { location_archived_harvest_count(id, conn).await }).await??;
+        let old_archived_harvest_count = tokio::spawn({
+            let db = db.clone();
+            async move { location_archived_harvest_count(id, db).await }
+        })
+        .await??;
 
         let mut tx = db.pool.begin().await?;
 
@@ -311,7 +315,7 @@ impl Location {
     }
 
     /// Fetches country regions from the database
-    pub async fn regions(country_id: Uuid, db: DatabaseConnection) -> ServerResult<ModelIndex> {
+    pub async fn regions(country_id: ModelID, db: DatabaseConnection) -> ServerResult<ModelIndex> {
         match sqlx::query!(
             r#"
                 SELECT region.id,
@@ -320,7 +324,7 @@ impl Location {
 
                 WHERE region.country_id = $1
             "#,
-            country_id
+            country_id.0
         )
         .fetch_all(&db.pool)
         .await
@@ -328,7 +332,7 @@ impl Location {
             Ok(records) => {
                 let regions = records
                     .into_iter()
-                    .map(|rec| ModelIdentifier::from_row(rec.id, rec.name))
+                    .map(|rec| ModelIdentifier::from_row(rec.id.into(), rec.name))
                     .collect();
 
                 Ok(regions)
@@ -355,7 +359,7 @@ impl Location {
             Ok(records) => {
                 let countries = records
                     .into_iter()
-                    .map(|rec| ModelIdentifier::from_row(rec.id, rec.name))
+                    .map(|rec| ModelIdentifier::from_row(rec.id.into(), rec.name))
                     .collect();
 
                 Ok(countries)

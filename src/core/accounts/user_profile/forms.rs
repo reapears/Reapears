@@ -1,14 +1,15 @@
 //! User profile forms impls
 
-use axum::async_trait;
+use axum::{
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, Json},
+    http::Request,
+};
 use serde::Deserialize;
-use uuid::Uuid;
+
 use validator::Validate;
 
-use crate::{
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidateForm},
-    server::state::ServerState,
-};
+use crate::{endpoint::EndpointRejection, server::state::ServerState};
 
 /// User profile update form
 #[derive(Debug, Clone, Deserialize, Validate)]
@@ -38,15 +39,17 @@ impl From<UserProfileUpdateForm> for UserProfileUpdateData {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for UserProfileUpdateForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate UserProfileUpdateForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
-            Ok(()) => Ok(self),
+impl<B> FromRequest<ServerState, B> for UserProfileUpdateForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        match input.validate() {
+            Ok(()) => Ok(input),
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
     }

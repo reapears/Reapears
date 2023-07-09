@@ -2,10 +2,9 @@
 
 use serde::Serialize;
 use time::{Date, OffsetDateTime};
-use uuid::Uuid;
 
 use crate::{
-    core::types::price::Price,
+    core::types::{price::Price, ModelID},
     core::{accounts::user::models::UserIndex, types::ModelIdentifier},
     services::produce::harvest::models::HarvestLocation,
 };
@@ -14,7 +13,7 @@ use crate::{
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HarvestAdmin {
-    pub id: Uuid,
+    pub id: ModelID,
     pub name: String,
     pub cultivar: ModelIdentifier,
     pub farm: ModelIdentifier,
@@ -36,12 +35,12 @@ impl HarvestAdmin {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
-        cultivar_id: Uuid,
+        id: ModelID,
+        cultivar_id: ModelID,
         cultivar_name: String,
-        farm_id: Uuid,
+        farm_id: ModelID,
         farm_name: String,
-        farm_owner_id: Uuid,
+        farm_owner_id: ModelID,
         farm_owner_first_name: String,
         farm_owner_last_name: Option<String>,
         farm_owner_photo: Option<String>,
@@ -54,7 +53,7 @@ impl HarvestAdmin {
         updated_at: Option<OffsetDateTime>,
         finished_at: Option<OffsetDateTime>,
         created_at: OffsetDateTime,
-        location_id: Uuid,
+        location_id: ModelID,
         place_name: String,
         region: Option<String>,
         country: String,

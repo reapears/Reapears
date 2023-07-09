@@ -87,21 +87,18 @@ use tower_http::services::{ServeDir, ServeFile};
 use super::state::ServerState;
 use crate::{
     endpoint::EndpointResult,
-    settings::{
-        cultivar_uploads_dir, harvest_uploads_dir, upload_not_found_file, user_uploads_dir,
-    },
+    settings::{CULTIVAR_UPLOAD_DIR, FILE_NOT_FOUND_PATH, HARVEST_UPLOAD_DIR, USER_UPLOAD_DIR},
 };
 
 mod accounts;
 mod services;
 
-pub fn server_routers(state: ServerState) -> Router {
+pub fn server_routers() -> Router<ServerState> {
     Router::new()
         .route("/health-check", get(health_check))
         .merge(services::routers())
         .merge(accounts::routers())
         .merge(pictures_router())
-        .with_state(state)
 }
 
 /// Verifies the server is up and ready to receive incoming requests.
@@ -112,13 +109,12 @@ async fn health_check() -> EndpointResult<StatusCode> {
 
 fn pictures_router() -> Router<ServerState> {
     let cultivar_dir =
-        get_service(ServeDir::new(cultivar_uploads_dir()).not_found_service(file_not_found()));
+        get_service(ServeDir::new(CULTIVAR_UPLOAD_DIR).not_found_service(file_not_found()));
 
     let harvest_dir =
-        get_service(ServeDir::new(harvest_uploads_dir()).not_found_service(file_not_found()));
+        get_service(ServeDir::new(HARVEST_UPLOAD_DIR).not_found_service(file_not_found()));
 
-    let user_dir =
-        get_service(ServeDir::new(user_uploads_dir()).not_found_service(file_not_found()));
+    let user_dir = get_service(ServeDir::new(USER_UPLOAD_DIR).not_found_service(file_not_found()));
 
     Router::new()
         .nest_service("/cultivars/p", cultivar_dir)
@@ -128,5 +124,5 @@ fn pictures_router() -> Router<ServerState> {
 
 /// File not found error response
 fn file_not_found() -> ServeFile {
-    ServeFile::new(upload_not_found_file())
+    ServeFile::new(FILE_NOT_FOUND_PATH)
 }

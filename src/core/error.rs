@@ -15,12 +15,28 @@ impl ServerError {
     pub const MESSAGE: &str = "\
 Something went wrong Unfortunately, a server error prevented your request from being completed. Reapears may be undergoing maintenance or your connection may have timed out. Please refresh the page or try again.";
 
+    /// Create a new internal server with message
     pub fn new(error_msg: impl AsRef<str>) -> Self {
         let kind =
             ServerErrorKind::Internal(Box::<dyn StdError + Send + Sync>::from(error_msg.as_ref()));
         Self { kind }
     }
 
+    /// Return whether the error is coursed by the user
+    #[must_use]
+    pub const fn is_user_error(&self) -> bool {
+        matches!(self.kind, ServerErrorKind::UserError(_))
+    }
+
+    /// Create a new user error
+    #[must_use]
+    pub fn user_error(error_msg: impl AsRef<str>) -> Self {
+        let kind =
+            ServerErrorKind::UserError(Box::<dyn StdError + Send + Sync>::from(error_msg.as_ref()));
+        Self { kind }
+    }
+
+    /// Create a new internal server from a generic error
     #[must_use]
     pub fn internal(err: GenericError) -> Self {
         Self {
@@ -40,12 +56,14 @@ impl StdError for ServerError {}
 /// Error kind of `ServerError` that can happen on the server.
 #[derive(Debug)]
 pub enum ServerErrorKind {
+    /// An error coursed by a client
+    UserError(GenericError),
     /// A wrapper on top of `sqlx::Error`
     Database(sqlx::Error),
     /// A wrapper on top of `serde_json::Error`
     JsonError(serde_json::Error),
     /// A wrapper on top of `password_hash::Error`
-    PasswordHash(argon2::password_hash::Error),
+    PasswordHash(password_auth::VerifyError),
     /// A wrapper on top of `image::ImageError`
     ImageError(image::ImageError),
     /// A wrapper on top of `lettre::error::Error`
@@ -59,13 +77,14 @@ pub enum ServerErrorKind {
 impl fmt::Display for ServerErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            // Self::UserError(err) => err.fmt(f),
             Self::Database(err) => err.fmt(f),
             Self::Io(err) => err.fmt(f),
             Self::PasswordHash(err) => err.fmt(f),
             Self::JsonError(err) => err.fmt(f),
             Self::ImageError(err) => err.fmt(f),
             Self::LettreError(err) => err.fmt(f),
-            Self::Internal(err) => err.fmt(f),
+            Self::Internal(err) | Self::UserError(err) => err.fmt(f),
         }
     }
 }
@@ -116,8 +135,8 @@ impl From<GenericError> for ServerError {
     }
 }
 
-impl From<argon2::password_hash::Error> for ServerError {
-    fn from(err: argon2::password_hash::Error) -> Self {
+impl From<password_auth::VerifyError> for ServerError {
+    fn from(err: password_auth::VerifyError) -> Self {
         Self {
             kind: ServerErrorKind::PasswordHash(err),
         }

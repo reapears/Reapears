@@ -4,13 +4,12 @@ use axum::{
     extract::{Json, Query, State},
     http::StatusCode,
 };
-use uuid::Uuid;
 
 use crate::{
-    auth::CurrentUser,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidatedJson},
+    auth::{AdminUser, FarmerUser},
+    endpoint::{EndpointRejection, EndpointResult},
     server::state::DatabaseConnection,
-    services::farmers::farm::permissions::check_user_owns_farm,
+    types::ModelID,
     types::{ModelIndex, Pagination},
 };
 
@@ -23,6 +22,7 @@ use super::{
 /// Handles the `GET /locations` route.
 #[tracing::instrument(skip(db))]
 pub async fn location_list(
+    #[allow(unused_variables)] user: AdminUser,
     pg: Option<Query<Pagination>>,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<LocationList>> {
@@ -36,7 +36,7 @@ pub async fn location_list(
 /// Handles the `GET /locations/:location_id` route.
 #[tracing::instrument(skip(db))]
 pub async fn location_detail(
-    ModelId(id): ModelId<Uuid>,
+    id: ModelID,
     pg: Option<Query<Pagination>>,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<Location>> {
@@ -53,57 +53,48 @@ pub async fn location_detail(
 }
 
 /// Handles the `POST /farms/farm_id/locations` route.
-#[tracing::instrument(skip(current_user, db, form))]
+#[tracing::instrument(skip(user, db, form))]
 pub async fn location_create(
-    current_user: CurrentUser,
-    ModelId(farm_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: FarmerUser,
+    farm_id: ModelID,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<LocationCreateForm>,
+    form: LocationCreateForm,
 ) -> EndpointResult<StatusCode> {
-    let check_permissions = check_user_owns_farm(current_user.id, farm_id, db.clone());
-    match check_permissions.await {
-        Ok(()) => Location::insert(form.data(farm_id), db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_location_id| Ok(StatusCode::CREATED),
-        ),
-        Err(err) => Err(err),
-    }
+    Location::insert(form.data(farm_id), db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_location_id| Ok(StatusCode::CREATED),
+    )
 }
 
 /// Handles the `PUT /locations/:location_id` route.
-#[tracing::instrument(skip(current_user, db, form))]
+#[tracing::instrument(skip(user, db, form))]
 pub async fn location_update(
-    current_user: CurrentUser,
-    ModelId(location_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: FarmerUser,
+    location_id: ModelID,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<LocationUpdateForm>,
+    form: LocationUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    let check_permissions = check_user_owns_location(current_user.id, location_id, db.clone());
-    match check_permissions.await {
-        Ok(()) => Location::update(location_id, form.into(), db)
-            .await
-            .map_or_else(
-                |_err| Err(EndpointRejection::internal_server_error()),
-                |_| Ok(StatusCode::OK),
-            ),
-        Err(err) => Err(err),
-    }
+    Location::update(location_id, form.into(), db)
+        .await
+        .map_or_else(
+            |_err| Err(EndpointRejection::internal_server_error()),
+            |_| Ok(StatusCode::OK),
+        )
 }
 
 /// Handles the `DELETE /locations/:location_id` route.
-#[tracing::instrument(skip(current_user, db))]
+#[tracing::instrument(skip(user, db))]
 pub async fn location_delete(
-    current_user: CurrentUser,
-    ModelId(location_id): ModelId<Uuid>,
+    user: FarmerUser,
+    location_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    let check_permissions = check_user_owns_location(current_user.id, location_id, db.clone());
+    let check_permissions = check_user_owns_location(user.id(), location_id, db.clone());
     match check_permissions.await {
         Ok(()) => Location::delete(location_id, db).await.map_or_else(
             |_err| Err(EndpointRejection::internal_server_error()),
             |_| Ok(StatusCode::NO_CONTENT),
         ),
-
         Err(err) => Err(err),
     }
 }
@@ -111,7 +102,7 @@ pub async fn location_delete(
 /// Handles the `GET /locations/countries/:country_id/regions` route.
 #[tracing::instrument(skip(db))]
 pub async fn region_list(
-    ModelId(country_id): ModelId<Uuid>,
+    country_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<ModelIndex>> {
     Location::regions(country_id, db).await.map_or_else(
