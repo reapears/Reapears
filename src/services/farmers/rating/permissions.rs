@@ -1,16 +1,15 @@
 //! `FarmRating` permission impls
 
-use uuid::Uuid;
-
 use crate::{
     endpoint::{EndpointRejection, EndpointResult},
     server::state::DatabaseConnection,
+    types::ModelID,
 };
 
 /// Validate user owns the rating
 pub async fn check_user_owns_rating(
-    user_id: Uuid,
-    rating_id: Uuid,
+    user_id: ModelID,
+    rating_id: ModelID,
     db: DatabaseConnection,
 ) -> EndpointResult<()> {
     match sqlx::query!(
@@ -24,8 +23,8 @@ pub async fn check_user_owns_rating(
                 AND farm_rating.id = $2
             )
             "#,
-        user_id,
-        rating_id
+        user_id.0,
+        rating_id.0
     )
     .fetch_one(&db.pool)
     .await

@@ -46,12 +46,12 @@ impl Config {
     }
 
     /// Gets the ip address the server is running on
-    pub fn host(&self) -> IpAddr {
+    pub const fn host(&self) -> IpAddr {
         self.server_addr.ip()
     }
 
     /// Gets the port of the server is running on
-    pub fn port(&self) -> u16 {
+    pub const fn port(&self) -> u16 {
         self.server_addr.port()
     }
 }

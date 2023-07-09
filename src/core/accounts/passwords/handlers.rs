@@ -9,8 +9,8 @@ use axum_extra::extract::PrivateCookieJar;
 use crate::{
     accounts::user::models::User,
     auth::{hash_token, CurrentUser, Token, TokenConfirm},
-    endpoint::{EndpointRejection, EndpointResult, ValidatedJson},
-    mail::{emails::password_reset_email, Mail},
+    endpoint::{EndpointRejection, EndpointResult},
+    mail::Mail,
     server::state::DatabaseConnection,
     settings::SERVER_DOMAIN,
 };
@@ -30,7 +30,7 @@ pub async fn password_verify(
     current_user: CurrentUser,
     cookie_jar: PrivateCookieJar,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<PasswordVerifyForm>,
+    form: PasswordVerifyForm,
 ) -> EndpointResult<(PrivateCookieJar, StatusCode)> {
     if check_password(current_user.id, form.password, db).await? {
         let cookie_jar = add_password_verified_cookie(cookie_jar);
@@ -47,7 +47,7 @@ pub async fn password_verify(
 pub async fn password_change(
     current_user: CurrentUser,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<PasswordChangeForm>,
+    form: PasswordChangeForm,
 ) -> EndpointResult<StatusCode> {
     let password_hash = form.try_phc().await?;
     PasswordModel::update(current_user.id, password_hash, db)
@@ -65,7 +65,7 @@ pub async fn password_change(
 pub async fn password_reset(
     confirm_token: Option<Query<TokenConfirm>>,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<PasswordResetForm>,
+    form: PasswordResetForm,
 ) -> EndpointResult<&'static str> {
     static ERR_MSG: &str = "Your password rest link is no longer valid.";
 
@@ -95,7 +95,7 @@ pub async fn password_reset(
 pub async fn password_forgot(
     State(db): State<DatabaseConnection>,
     State(outlook): State<Mail>,
-    ValidatedJson(form): ValidatedJson<PasswordForgotForm>,
+    form: PasswordForgotForm,
 ) -> EndpointResult<&'static str> {
     let (plaintext, hash) = Token::default().into_parts();
     let email_address = form.email;
@@ -106,8 +106,7 @@ pub async fn password_forgot(
 
     // Send password reset email
     let link = format!("{SERVER_DOMAIN}/account/reset-password?token={plaintext}");
-    let subject = "Reset your Reapears password.";
-    let email = password_reset_email(&first_name, &email_address, subject, &link)?;
+    let email = outlook.password_reset(&first_name, &email_address, &link)?;
     outlook.send(email).await?;
 
     Ok("Your password reset link was sent to your email ")

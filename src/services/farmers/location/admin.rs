@@ -3,9 +3,11 @@
 use geo::Point;
 use serde::Serialize;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use crate::{core::types::ModelIdentifier, services::produce::harvest::models::HarvestList};
+use crate::{
+    core::types::{ModelID, ModelIdentifier},
+    services::produce::harvest::models::HarvestList,
+};
 
 use super::models::try_into_point;
 
@@ -13,7 +15,7 @@ use super::models::try_into_point;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LocationAdmin {
-    pub id: Uuid,
+    pub id: ModelID,
     pub place_name: String,
     pub farm: ModelIdentifier,
     pub country: String,
@@ -29,9 +31,9 @@ impl LocationAdmin {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         place_name: String,
-        farm_id: Uuid,
+        farm_id: ModelID,
         farm_name: String,
         region: Option<String>,
         country: String,

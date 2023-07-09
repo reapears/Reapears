@@ -2,7 +2,8 @@
 
 use serde::Serialize;
 use time::Date;
-use uuid::Uuid;
+
+use crate::types::ModelID;
 
 /// User personal infos model
 ///
@@ -10,12 +11,11 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PersonalInfo {
-    pub id: Uuid,
+    pub id: ModelID,
     pub first_name: String,
     pub last_name: Option<String>,
     pub gender: Option<String>,
     pub date_of_birth: Option<Date>,
-    // pub government_id: Option<String>,
     pub email: String,
     pub phone: Option<String>,
     pub date_joined: Date,
@@ -26,12 +26,11 @@ impl PersonalInfo {
     #[allow(clippy::too_many_arguments, clippy::missing_const_for_fn)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         first_name: String,
         last_name: Option<String>,
         gender: Option<String>,
         date_of_birth: Option<Date>,
-        // government_id: Option<String>,
         email: String,
         phone: Option<String>,
         date_joined: Date,

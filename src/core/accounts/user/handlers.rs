@@ -8,9 +8,9 @@ use axum::{
 
 use crate::{
     accounts::emails::EmailModel,
-    auth::{hash_token, CurrentUser, Token, TokenConfirm},
-    endpoint::{EndpointRejection, EndpointResult, ValidatedJson},
-    mail::{emails::account_confirmation_email, Mail},
+    auth::{hash_token, AdminUser, CurrentUser, SuperUser, Token, TokenConfirm},
+    endpoint::{EndpointRejection, EndpointResult},
+    mail::Mail,
     server::state::DatabaseConnection,
     settings::SERVER_DOMAIN,
     types::Pagination,
@@ -25,7 +25,7 @@ use super::{
 /// Handles the `GET /account/users` route.
 #[tracing::instrument(skip(db))]
 pub async fn user_list(
-    // current_user: CurrentUser,
+    user: AdminUser,
     pg: Option<Query<Pagination>>,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<UserList>> {
@@ -41,7 +41,7 @@ pub async fn user_list(
 pub async fn signup(
     State(db): State<DatabaseConnection>,
     State(outlook): State<Mail>,
-    ValidatedJson(form): ValidatedJson<SignUpForm>,
+    form: SignUpForm,
 ) -> EndpointResult<&'static str> {
     let (plaintext, hash) = Token::default().into_parts();
     let values = form.try_data(hash).await?;
@@ -52,8 +52,7 @@ pub async fn signup(
 
     // Send confirmation email
     let link = format!("{SERVER_DOMAIN}/account/confirm?token={plaintext}");
-    let subject = "[Reapears] Please verify your email address.";
-    let email = account_confirmation_email(&first_name, &email_address, subject, &link)?;
+    let email = outlook.account_confirm(&first_name, &email_address, &link)?;
     outlook.send(email).await?;
 
     Ok("Please confirm your email address by clicking the email we just sent you.")
@@ -101,46 +100,38 @@ Your account may already be activated or may have cancelled your registration.".
 ///  until the account is unlocked.
 #[tracing::instrument(skip(db))]
 pub async fn account_lock(
-    current_user: CurrentUser,
+    user: SuperUser,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<AccountLockForm>,
+    form: AccountLockForm,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_superuser {
-        User::lock_account(form.into(), db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    User::lock_account(form.into(), db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_| Ok(StatusCode::OK),
+    )
 }
 
 /// Handles the `POST /account/unlock` route.
 #[tracing::instrument(skip(db))]
 pub async fn account_unlock(
-    current_user: CurrentUser,
+    user: SuperUser,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<AccountUnlockForm>,
+    form: AccountUnlockForm,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_superuser {
-        User::unlock_account(form.user_id, db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
-    } else {
-        Err(EndpointRejection::forbidden())
-    }
+    User::unlock_account(form.user_id, db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_| Ok(StatusCode::OK),
+    )
 }
 
 /// Handles the `DELETE /account/deactivate` route.
 ///
 /// Permanently deletes the user from the platform
-#[tracing::instrument(skip(current_user, db))]
+#[tracing::instrument(skip(user, db))]
 pub async fn account_deactivate(
-    current_user: CurrentUser,
+    user: CurrentUser,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    User::delete(current_user.id, db).await.map_or_else(
+    User::delete(user.id, db).await.map_or_else(
         |_err| Err(EndpointRejection::internal_server_error()),
         |_| Ok(StatusCode::NO_CONTENT),
     )

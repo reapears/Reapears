@@ -4,8 +4,8 @@ DROP VIEW IF EXISTS services.active_locations;
 DROP VIEW IF EXISTS services.active_farms;
 DROP VIEW IF EXISTS services.active_harvests;
 
-DROP TABLE IF EXISTS services.message_status;
-DROP TABLE IF EXISTS services.direct_messages;
+DROP TABLE IF EXISTS features.message_status;
+DROP TABLE IF EXISTS features.direct_messages;
 DROP TABLE IF EXISTS services.harvests_wishlist;
 DROP TABLE IF EXISTS services.harvests;
 -- DROP TABLE IF EXISTS services.location_tags;

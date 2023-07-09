@@ -3,15 +3,16 @@
 use camino::{Utf8Path, Utf8PathBuf};
 use image::{io::Reader as ImageReader, DynamicImage, ImageFormat};
 use tokio::task::{self, JoinSet};
-use uuid::Uuid;
 
 use std::{fmt, io::Cursor};
 
-use super::UploadedFile;
 use crate::{
     endpoint::{EndpointRejection, EndpointResult},
     error::{ServerError, ServerResult},
+    types::ModelID,
 };
+
+use super::UploadedFile;
 
 const SUPPORTED_UPLOAD_IMAGE_FORMATS: [&str; 4] = ["jpeg", "jpg", "png", "webp"];
 const SUPPORTED_IMAGE_OUTPUT_FORMAT: [SupportedImageOutputFormat; 2] = [
@@ -22,9 +23,11 @@ const SUPPORTED_IMAGE_OUTPUT_FORMAT: [SupportedImageOutputFormat; 2] = [
 /// Image file decode from `UploadedFile`
 #[derive(Clone, Debug)]
 pub struct ImageFile {
-    pub id: Uuid,
+    pub id: ModelID,
+    /// File stem
     pub stem: String,
     pub image: DynamicImage,
+    /// File extension
     pub format: ImageFormat,
 }
 
@@ -65,17 +68,15 @@ impl ImageFile {
     {
         let mut tasks = JoinSet::new();
         for format in SUPPORTED_IMAGE_OUTPUT_FORMAT {
-            let mut image = self.clone();
+            let mut img = self.clone();
             let save_to = save_to.to_string().clone();
-            image.change_format(format)?;
+            img.change_format(format)?;
 
-            tasks
-                .build_task()
-                .spawn(async move { image.__save(save_to) })?;
+            tasks.spawn_blocking(move || img.__save(save_to));
         }
 
         let mut paths = Vec::new();
-        // Wait for tasks to complete deleting
+        // Wait for tasks to complete saving images
         while let Some(join_result) = tasks.join_next().await {
             match join_result {
                 Ok(task_result) => match task_result {
@@ -127,7 +128,7 @@ impl ImageFile {
 }
 
 impl UploadedFile {
-    /// Try parse `Self` into `ImageFile`
+    /// Try parse `UploadedFile` into `ImageFile`
     ///
     /// # Errors
     ///

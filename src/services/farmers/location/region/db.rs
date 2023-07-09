@@ -1,8 +1,6 @@
 //! Cultivar category database impl
 
-use uuid::Uuid;
-
-use crate::{error::ServerResult, server::state::DatabaseConnection};
+use crate::{error::ServerResult, server::state::DatabaseConnection, types::ModelID};
 
 use super::{
     forms::{RegionInsertData, RegionUpdateData},
@@ -26,7 +24,7 @@ impl Region {
             Ok(records) => {
                 let regions = records
                     .into_iter()
-                    .map(|rec| Self::from_row(rec.id, rec.name))
+                    .map(|rec| Self::from_row(rec.id.into(), rec.name))
                     .collect();
 
                 Ok(regions)
@@ -40,7 +38,7 @@ impl Region {
 
     /// Inserts location region into the database
     #[tracing::instrument(name = "Insert Location-region", skip(db, region))]
-    pub async fn insert(region: RegionInsertData, db: DatabaseConnection) -> ServerResult<Uuid> {
+    pub async fn insert(region: RegionInsertData, db: DatabaseConnection) -> ServerResult<ModelID> {
         match sqlx::query!(
             r#"
                 INSERT INTO services.regions (
@@ -50,8 +48,8 @@ impl Region {
                 )
                 VALUES ($1, $2, $3);
             "#,
-            region.id,
-            region.country_id,
+            region.id.0,
+            region.country_id.0,
             region.name
         )
         .execute(&db.pool)
@@ -71,7 +69,7 @@ impl Region {
     /// Updates location region in the database
     #[tracing::instrument(name = "Update Location-region", skip(db, region))]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         region: RegionUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -83,8 +81,8 @@ impl Region {
                 WHERE region.id = $3
            "#,
             region.name,
-            region.country_id,
-            id
+            region.country_id.map(|id| id.0),
+            id.0
         )
         .execute(&db.pool)
         .await
@@ -102,13 +100,13 @@ impl Region {
 
     // /// Deletes location region from the database
     #[tracing::instrument(name = "Delete Location-region", skip(db))]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 DELETE FROM services.regions region
                 WHERE region.id = $1
            "#,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await

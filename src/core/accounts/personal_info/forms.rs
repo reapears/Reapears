@@ -1,15 +1,15 @@
 //! User personal info forms impls
 
-use axum::async_trait;
+use axum::{
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, Json},
+    http::Request,
+};
 use serde::Deserialize;
 use time::Date;
-use uuid::Uuid;
 use validator::Validate;
 
-use crate::{
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidateForm},
-    server::state::ServerState,
-};
+use crate::{endpoint::EndpointRejection, server::state::ServerState};
 
 /// User personal info update form
 #[derive(Debug, Clone, Deserialize, Validate)]
@@ -48,19 +48,22 @@ impl From<PersonalInfoUpdateForm> for PersonalInfoUpdateData {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for PersonalInfoUpdateForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate PersonalInfoUpdateForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
+impl<B> FromRequest<ServerState, B> for PersonalInfoUpdateForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
+        match input.validate() {
             Ok(()) => {
-                if let Some(ref gender) = self.gender {
+                if let Some(ref gender) = input.gender {
                     helpers::validate_gender(gender)?;
                 }
-                Ok(self)
+                Ok(input)
             }
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }

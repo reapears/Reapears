@@ -6,14 +6,13 @@
 )]
 use serde::Serialize;
 use time::{Date, OffsetDateTime};
-use uuid::Uuid;
 
-use crate::core::{accounts::user::models::UserIndex, types::ModelIdentifier};
+use crate::core::{accounts::user::models::UserIndex, types::{ModelIdentifier, ModelID}};
 
 /// The model representing a row in the `locations` database table.
 #[derive(Debug, Clone, Serialize)]
 pub struct FarmRatingAdmin {
-    pub id: Uuid,
+    pub id: ModelID,
     pub grade: u8,
     pub comment: Option<String>,
     pub farm: ModelIdentifier,
@@ -26,14 +25,14 @@ impl FarmRatingAdmin {
     /// Creates a new `FarmRatingAdmin` from the database row
     #[allow(clippy::too_many_arguments)]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         grade: i32,
         comment: Option<String>,
         update_at: Option<OffsetDateTime>
         created_at: Date,
-        farm_id: Uuid,
+        farm_id: ModelID,
         farm_name: String,
-        user_id: Uuid,
+        user_id: ModelID,
         user_first_name: String,
         user_last_name: Option<String>,
         user_photo: Option<String>,

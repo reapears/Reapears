@@ -1,12 +1,12 @@
 //! Harvest database impl
 
-use uuid::Uuid;
-
-use crate::{error::ServerResult, server::state::DatabaseConnection, types::Pagination};
+use crate::{
+    error::ServerResult, server::state::DatabaseConnection, types::ModelID, types::Pagination,
+};
 
 use super::{
     forms::{HarvestInsertData, HarvestUpdateData},
-    models::{Harvest, HarvestImages, HarvestIndex, HarvestList},
+    models::{Harvest, HarvestIndex, HarvestList},
     utils::{delete_harvest_photos, delete_or_archive_harvest, find_delete_harvest},
 };
 
@@ -55,7 +55,7 @@ impl Harvest {
                     .into_iter()
                     .map(|rec| {
                         HarvestIndex::from_row(
-                            rec.harvest_id,
+                            rec.harvest_id.into(),
                             rec.harvest_price,
                             rec.harvest_available_at,
                             rec.harvest_images,
@@ -80,7 +80,7 @@ impl Harvest {
 
     /// Fetches harvest detail from the database
     #[tracing::instrument(name = "Find Harvest", skip(db))]
-    pub async fn find(id: Uuid, db: DatabaseConnection) -> ServerResult<Option<Self>> {
+    pub async fn find(id: ModelID, db: DatabaseConnection) -> ServerResult<Option<Self>> {
         //NB! Don't forget to select harvest from services.active_harvests
         match sqlx::query!(
             r#"
@@ -121,29 +121,29 @@ impl Harvest {
                 
                 WHERE harvest.id = $1;
             "#,
-            id
+            id.0
         )
         .fetch_one(&db.pool)
         .await
         {
             Ok(rec) => {
                 let harvest = Self::from_row(
-                    rec.harvest_id,
+                    rec.harvest_id.into(),
                     rec.harvest_price,
                     rec.harvest_type,
                     rec.harvest_description,
                     rec.harvest_images,
                     rec.harvest_available_at,
                     rec.harvest_created_at,
-                    rec.cultivar_id,
+                    rec.cultivar_id.into(),
                     rec.cultivar_name,
-                    rec.location_id,
+                    rec.location_id.into(),
                     rec.location_place_name,
                     rec.location_region,
                     rec.location_country,
-                    rec.farm_id,
+                    rec.farm_id.into(),
                     rec.farm_name,
-                    rec.farm_owner_id,
+                    rec.farm_owner_id.into(),
                     rec.farm_owner_first_name,
                     rec.farm_owner_last_name,
                     rec.farm_owner_photo,
@@ -165,7 +165,10 @@ impl Harvest {
 
     /// Inserts harvest in the database
     #[tracing::instrument(name = "Insert Harvest", skip(db, harvest))]
-    pub async fn insert(harvest: HarvestInsertData, db: DatabaseConnection) -> ServerResult<Uuid> {
+    pub async fn insert(
+        harvest: HarvestInsertData,
+        db: DatabaseConnection,
+    ) -> ServerResult<ModelID> {
         match sqlx::query!(
             r#"
                 INSERT INTO services.harvests(
@@ -181,9 +184,9 @@ impl Harvest {
                 )
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, false);
             "#,
-            harvest.id,
-            harvest.cultivar_id,
-            harvest.location_id,
+            harvest.id.0,
+            harvest.cultivar_id.0,
+            harvest.location_id.0,
             harvest.price,
             harvest.r#type,
             harvest.description,
@@ -207,7 +210,7 @@ impl Harvest {
     /// Updates harvest in the database
     #[tracing::instrument(name = "Update Harvest", skip(db, harvest))]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         harvest: HarvestUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -223,14 +226,14 @@ impl Harvest {
                     updated_at = $7
                 WHERE harvest.id = $8;
             "#,
-            harvest.cultivar_id,
-            harvest.location_id,
+            harvest.cultivar_id.map(|id| id.0),
+            harvest.location_id.map(|id| id.0),
             harvest.price,
             harvest.r#type,
             harvest.description,
             harvest.available_at,
             harvest.updated_at,
-            id,
+            id.0,
         )
         .execute(&db.pool)
         .await
@@ -251,7 +254,7 @@ impl Harvest {
     /// Harvest will only be deleted if it has not stayed on
     /// the platform for at least `HARVEST_MAX_AGE_TO_ARCHIVE` days
     #[tracing::instrument(name = "Delete Harvest", skip(db))]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         let mut harvest = find_delete_harvest(id, db.clone()).await?;
         let images = harvest.images.take();
 
@@ -269,13 +272,13 @@ impl Harvest {
     }
 
     /// Inserts harvest image-paths into the database
+    /// Returns paths of old images
     #[tracing::instrument(name = "Database::harvest-insert-image", skip(db))]
     pub async fn insert_photos(
-        id: Uuid,
-        paths: HarvestImages,
+        id: ModelID,
+        paths: Vec<String>,
         db: DatabaseConnection,
-    ) -> ServerResult<(HarvestImages, Option<serde_json::Value>)> {
-        let values = serde_json::to_value(paths.clone()).unwrap();
+    ) -> ServerResult<Option<Vec<String>>> {
         match sqlx::query!(
             r#"
                 UPDATE services.harvests harvest
@@ -288,15 +291,15 @@ impl Harvest {
                     WHERE  harvest.id = $2
                 ) AS old_images
            "#,
-            values,
-            id
+            &paths[..],
+            id.0
         )
         .fetch_one(&db.pool)
         .await
         {
             Ok(rec) => {
                 tracing::debug!("Harvest image-paths inserted successfully");
-                Ok((paths, rec.old_images))
+                Ok(rec.old_images)
             }
             Err(err) => {
                 tracing::error!(
@@ -310,7 +313,7 @@ impl Harvest {
 
     /// Deletes harvest image-paths from the database
     #[tracing::instrument(name = "Database::harvest-delete-image", skip(db))]
-    pub async fn delete_photos(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete_photos(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 UPDATE services.harvests harvest
@@ -323,7 +326,7 @@ impl Harvest {
                     WHERE  harvest.id = $1
                 ) AS images
            "#,
-            id
+            id.0
         )
         .fetch_one(&db.pool)
         .await

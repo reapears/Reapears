@@ -2,7 +2,6 @@
 
 use itertools::Itertools;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{
     error::{ServerError, ServerResult},
@@ -11,6 +10,7 @@ use crate::{
         farmers::location::models::{Location, LocationIndex},
         produce::harvest::{delete_harvest_photos_list, models::HarvestIndex},
     },
+    types::ModelID,
     types::{ModelIdentifier, ModelIndex, Pagination},
 };
 
@@ -42,6 +42,7 @@ impl Farm {
                 SELECT farm.id AS "farm_id!",
                     farm.owner_id AS "farm_owner_id!",
                     farm.name AS "farm_name!",
+                    farm.logo AS "farm_logo",
                     user_.first_name AS "farm_owner_first_name!",
                     user_.last_name AS farm_owner_last_name,
                     profile.photo AS farm_owner_photo,
@@ -82,7 +83,9 @@ impl Farm {
                     let first_rec = &farm_group[0];
 
                     let farm_name = first_rec.farm_name.clone();
-                    let owner_id = first_rec.farm_owner_id;
+                    let farm_logo = first_rec.farm_logo.clone();
+
+                    let owner_id = first_rec.farm_owner_id.into();
                     let owner_first_name = first_rec.farm_owner_first_name.clone();
                     let owner_last_name = first_rec.farm_owner_last_name.clone();
                     let owner_photo = first_rec.farm_owner_photo.clone();
@@ -91,7 +94,7 @@ impl Farm {
                         .into_iter()
                         .map(|rec| {
                             LocationIndex::from_row(
-                                rec.location_id,
+                                rec.location_id.into(),
                                 rec.location_place_name,
                                 rec.location_region,
                                 rec.location_country,
@@ -103,8 +106,9 @@ impl Farm {
                         .collect();
 
                     farms.push(FarmIndex::from_row(
-                        farm_id,
+                        farm_id.into(),
                         farm_name,
+                        farm_logo,
                         locations,
                         owner_id,
                         owner_first_name,
@@ -124,12 +128,15 @@ impl Farm {
 
     /// Fetches farm detail from the database
     #[tracing::instrument(name = "Find Farm", skip(db))]
-    pub async fn find(id: Uuid, db: DatabaseConnection) -> ServerResult<Option<Self>> {
+    pub async fn find(id: ModelID, db: DatabaseConnection) -> ServerResult<Option<Self>> {
         match sqlx::query!(
             r#"
                 SELECT farm.id AS "farm_id!",
                     farm.owner_id as "farm_owner_id!",
                     farm.name AS "farm_name!",
+                    farm.logo AS "farm_logo",
+                    farm.contact_email AS "farm_contact_email",
+                    farm.contact_number AS "farm_contact_number",
                     farm.registered_on AS "farm_registered_on!",
                     user_.first_name AS farm_owner_first_name,
                     user_.last_name AS farm_owner_last_name,
@@ -164,7 +171,7 @@ impl Farm {
 
                 WHERE farm.id = $1
             "#,
-            id,
+            id.0,
         )
         .fetch_all(&db.pool)
         .await
@@ -173,10 +180,14 @@ impl Farm {
             Ok(records) => {
                 let first_rec = &records[0];
 
-                let farm_id = first_rec.farm_id;
+                let farm_id = first_rec.farm_id.into();
                 let farm_name = first_rec.farm_name.clone();
+                let farm_logo = first_rec.farm_logo.clone();
+                let farm_contact_email = first_rec.farm_contact_email.clone();
+                let farm_contact_number = first_rec.farm_contact_number.clone();
+
                 let registered_on = first_rec.farm_registered_on;
-                let owner_id = first_rec.farm_owner_id;
+                let owner_id = first_rec.farm_owner_id.into();
                 let owner_first_name = first_rec.farm_owner_first_name.clone();
                 let owner_last_name = first_rec.farm_owner_last_name.clone();
                 let owner_photo = first_rec.farm_owner_photo.clone();
@@ -194,7 +205,6 @@ impl Farm {
                     let country = first_rec.location_country.clone();
                     let coords = first_rec.location_coords.clone();
                     let description = first_rec.location_description.clone();
-                    let farm_id = first_rec.farm_id;
                     let farm_name = first_rec.farm_name.clone();
 
                     // Create harvests available at the location
@@ -203,7 +213,7 @@ impl Farm {
                         .filter(|rec| rec.harvest_id.is_some())
                         .map(|rec| {
                             HarvestIndex::from_row(
-                                rec.harvest_id.unwrap(),
+                                rec.harvest_id.unwrap().into(),
                                 rec.harvest_price.unwrap(),
                                 rec.harvest_available_at.unwrap(),
                                 rec.harvest_images,
@@ -219,7 +229,7 @@ impl Farm {
                     let harvests = (!harvests.is_empty()).then_some(harvests);
 
                     locations.push(Location::from_row(
-                        location_id,
+                        location_id.into(),
                         place_name,
                         region,
                         country,
@@ -234,6 +244,9 @@ impl Farm {
                 let farm = Self::from_row(
                     farm_id,
                     farm_name,
+                    farm_logo,
+                    farm_contact_email,
+                    farm_contact_number,
                     locations,
                     registered_on,
                     owner_id,
@@ -252,7 +265,7 @@ impl Farm {
 
     /// Inserts farm into the database
     #[tracing::instrument(name = "Insert Farm", skip(db, farm))]
-    pub async fn insert(farm: FarmInsertData, db: DatabaseConnection) -> ServerResult<Uuid> {
+    pub async fn insert(farm: FarmInsertData, db: DatabaseConnection) -> ServerResult<ModelID> {
         let mut tx = db.pool.begin().await?; // init transaction
         match sqlx::query!(
             r#"
@@ -265,12 +278,12 @@ impl Farm {
                 )
                 VALUES($1, $2, $3, $4, false);
             "#,
-            farm.id,
-            farm.owner_id,
+            farm.id.0,
+            farm.owner_id.0,
             farm.name,
             farm.registered_on,
         )
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await
         {
             Ok(result) => {
@@ -299,7 +312,7 @@ impl Farm {
     /// Updates farm in the database
     #[tracing::instrument(name = "Update Farm", skip(db, farm))]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         farm: FarmUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -310,7 +323,7 @@ impl Farm {
                 WHERE id = $2;
            "#,
             farm.name,
-            id,
+            id.0,
         )
         .execute(&db.pool)
         .await
@@ -332,7 +345,7 @@ impl Farm {
     // that has harvests associated with it.
     #[tracing::instrument(name = "Delete Farm", skip(db))]
     #[allow(clippy::cast_sign_loss)]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         let conn = db.clone();
         let old_archived_harvest_count =
             tokio::spawn(async move { farm_archived_harvest_count(id, conn).await }).await??;
@@ -386,7 +399,10 @@ impl Farm {
     }
 
     /// Fetches farm's location identifiers from the database
-    pub async fn location_index(farm_id: Uuid, db: DatabaseConnection) -> ServerResult<ModelIndex> {
+    pub async fn location_index(
+        farm_id: ModelID,
+        db: DatabaseConnection,
+    ) -> ServerResult<ModelIndex> {
         match sqlx::query!(
             r#"
                 SELECT location_.id AS "id!",
@@ -395,7 +411,7 @@ impl Farm {
 
                 WHERE location_.farm_id = $1
             "#,
-            farm_id
+            farm_id.0
         )
         .fetch_all(&db.pool)
         .await
@@ -403,7 +419,7 @@ impl Farm {
             Ok(records) => {
                 let locations = records
                     .into_iter()
-                    .map(|rec| ModelIdentifier::from_row(rec.id, rec.place_name))
+                    .map(|rec| ModelIdentifier::from_row(rec.id.into(), rec.place_name))
                     .collect();
 
                 Ok(locations)

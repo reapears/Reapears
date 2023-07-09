@@ -9,4 +9,4 @@ mod utils;
 pub use utils::delete_user_photo;
 
 /// Number of profile photos allowed per user
-pub const USER_MAX_PROFILE_PHOTO: usize = 1;
+pub const USER_MAX_PROFILE_PHOTO: u8 = 1;

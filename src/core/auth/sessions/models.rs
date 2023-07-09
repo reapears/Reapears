@@ -1,7 +1,7 @@
 //! Session models impls
 
+use crate::types::ModelID;
 use time::Date;
-use uuid::Uuid;
 
 /// The model representing a row in the `sessions` database table.
 #[derive(Debug, Clone)]
@@ -10,7 +10,7 @@ pub struct Session;
 /// User infos used for logging-in
 #[derive(Debug, Clone)]
 pub struct LoginUser {
-    pub id: Uuid,
+    pub id: ModelID,
     pub phc_string: String,
     pub account_locked: bool,
     pub account_locked_reason: Option<String>,
@@ -22,7 +22,7 @@ impl LoginUser {
     #[must_use]
     /// Creates a new `LoginUser` from the database row
     pub const fn from_row(
-        id: Uuid,
+        id: ModelID,
         phc_string: String,
         account_locked: bool,
         account_locked_reason: Option<String>,

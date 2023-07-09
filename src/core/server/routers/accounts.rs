@@ -5,11 +5,13 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
-use tower_http::limit::RequestBodyLimitLayer;
+// use tower_http::limit::RequestBodyLimitLayer;
 
 use crate::{
     accounts::{
-        emails::handlers::{email_exists, email_update, email_verify},
+        emails::handlers::{
+            email_change_approve, email_exists, email_update, new_email_change_verify,
+        },
         passwords::handlers::{password_change, password_forgot, password_reset, password_verify},
         personal_info::handlers::{user_personal_info, user_personal_info_update},
         user::handlers::{
@@ -20,7 +22,7 @@ use crate::{
         },
     },
     auth::sessions::handlers::{login, logout},
-    files::IMAGE_MAX_SIZE,
+    // files::IMAGE_MAX_SIZE,
     server::state::ServerState,
 };
 
@@ -49,16 +51,24 @@ pub fn routers() -> Router<ServerState> {
             "/account/users/profile",
             get(user_my_profile).put(user_profile_update),
         )
-        .route("/account/users/profile/photo", post(user_photo_upload))
-        .layer(DefaultBodyLimit::disable())
-        .layer(RequestBodyLimitLayer::new(IMAGE_MAX_SIZE))
+        .route(
+            "/account/users/profile/photo",
+            post(user_photo_upload).layer(DefaultBodyLimit::disable()), // .layer(RequestBodyLimitLayer::new(IMAGE_MAX_SIZE))
+        )
         // Settings
         .route(
             "/account/settings/personal-info",
             get(user_personal_info).put(user_personal_info_update),
         )
         .route("/account/settings/change-email", post(email_update))
-        .route("/account/settings/confirm-email", post(email_verify))
+        .route(
+            "/account/settings/approve-email-change",
+            post(email_change_approve),
+        )
+        .route(
+            "/account/settings/confirm-new-email",
+            post(new_email_change_verify),
+        )
         .route("/account/settings/change-password", post(password_change))
         .route("/account/settings/verify-password", post(password_verify))
     // .route("/account/settings/phones", put(phone_update))

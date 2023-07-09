@@ -1,18 +1,21 @@
 //! User forms impls
 
-use axum::async_trait;
+use axum::{
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, Json},
+    http::Request,
+};
 use serde::Deserialize;
 use time::{Date, OffsetDateTime};
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
     accounts::emails::{forms::EmailInsertData, EmailModel},
     auth::{hash_password, TokenHash},
-    db,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidateForm},
+    endpoint::EndpointRejection,
     error::ServerResult,
     server::state::ServerState,
+    types::ModelID,
 };
 
 /// User sign-up form
@@ -39,7 +42,7 @@ pub struct SignUpForm {
 /// Signup cleaned data
 #[derive(Debug, Clone)]
 pub struct SignUpData {
-    pub id: Uuid,
+    pub id: ModelID,
     pub first_name: String,
     pub last_name: Option<String>,
     pub email: EmailInsertData,
@@ -58,7 +61,7 @@ impl SignUpForm {
     /// Return an error if failed to hash a password
     pub async fn try_data(self, email_token: TokenHash) -> ServerResult<SignUpData> {
         let data = SignUpData {
-            id: db::model_id(),
+            id: ModelID::new(),
             first_name: self.first_name,
             last_name: self.last_name,
             email: EmailInsertData::new(self.email.to_lowercase(), email_token),
@@ -73,17 +76,19 @@ impl SignUpForm {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for SignUpForm {
-    #[tracing::instrument(skip(self, state), name = "Validate SignUpForm")]
-    async fn validate_form(
-        self,
-        state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
+impl<B> FromRequest<ServerState, B> for SignUpForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        match input.validate() {
             Ok(()) => {
                 let db = state.database.clone();
-                let email = self.email.clone();
+                let email = input.email.clone();
                 if EmailModel::exists_and_verified(email.clone(), db.clone()).await? {
                     // A redirect to login perhaps
                     return Err(EndpointRejection::BadRequest(
@@ -97,7 +102,7 @@ impl ValidateForm<ServerState> for SignUpForm {
                     EmailModel::delete_unverified(email, db).await?;
                 }
 
-                Ok(self)
+                Ok(input)
             }
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
@@ -108,7 +113,7 @@ impl ValidateForm<ServerState> for SignUpForm {
 #[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountLockForm {
-    pub user_id: Uuid,
+    pub user_id: ModelID,
     pub account_locked_reason: String,
     pub account_locked_until: Option<Date>,
 }
@@ -116,7 +121,7 @@ pub struct AccountLockForm {
 /// User account lock cleaned data
 #[derive(Debug, Clone, Deserialize)]
 pub struct AccountLockData {
-    pub user_id: Uuid,
+    pub user_id: ModelID,
     pub account_locked_reason: String,
     pub account_locked_until: Option<Date>,
 }
@@ -132,18 +137,20 @@ impl From<AccountLockForm> for AccountLockData {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for AccountLockForm {
-    #[tracing::instrument(skip(self, state), name = "Validate AccountLockForm")]
-    async fn validate_form(
-        self,
-        state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
+impl<B> FromRequest<ServerState, B> for AccountLockForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
+        match input.validate() {
             Ok(()) => {
-                let db = state.database.clone();
-                helpers::validate_user_exists(self.user_id, db).await?;
-                Ok(self)
+                helpers::validate_user_exists(input.user_id, state.database.clone()).await?;
+                Ok(input)
             }
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
@@ -154,20 +161,21 @@ impl ValidateForm<ServerState> for AccountLockForm {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountUnlockForm {
-    pub user_id: Uuid,
+    pub user_id: ModelID,
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for AccountUnlockForm {
-    #[tracing::instrument(skip(self, state), name = "Validate AccountLockForm")]
-    async fn validate_form(
-        self,
-        state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        let db = state.database.clone();
-        helpers::validate_user_exists(self.user_id, db).await?;
-        Ok(self)
+impl<B> FromRequest<ServerState, B> for AccountUnlockForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        helpers::validate_user_exists(input.user_id, state.database.clone()).await?;
+        Ok(input)
     }
 }
 
@@ -176,11 +184,11 @@ mod helpers {
     use crate::{
         endpoint::{EndpointRejection, EndpointResult},
         server::state::DatabaseConnection,
+        types::ModelID,
     };
-    use uuid::Uuid;
 
     /// Validate `user_id` exists
-    pub async fn validate_user_exists(id: Uuid, db: DatabaseConnection) -> EndpointResult<()> {
+    pub async fn validate_user_exists(id: ModelID, db: DatabaseConnection) -> EndpointResult<()> {
         match sqlx::query!(
             r#"
                 SELECT EXISTS(
@@ -188,7 +196,7 @@ mod helpers {
                     WHERE user_.id = $1
                 ) AS "exists!"
             "#,
-            id,
+            id.0,
         )
         .fetch_one(&db.pool)
         .await

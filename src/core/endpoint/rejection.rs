@@ -96,8 +96,12 @@ impl EndpointRejection {
 }
 
 impl From<ServerError> for EndpointRejection {
-    fn from(_value: ServerError) -> Self {
-        Self::InternalServerError(ServerError::MESSAGE.into())
+    fn from(err: ServerError) -> Self {
+        if err.is_user_error() {
+            Self::BadRequest(err.to_string().into())
+        } else {
+            Self::InternalServerError(ServerError::MESSAGE.into())
+        }
     }
 }
 

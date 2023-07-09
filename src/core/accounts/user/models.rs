@@ -1,7 +1,7 @@
 //! User models impls
 
+use crate::types::ModelID;
 use serde::Serialize;
-use uuid::Uuid;
 
 /// A `Vec` of users
 pub type UserList = Vec<UserIndex>;
@@ -14,7 +14,7 @@ pub struct User;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserIndex {
-    pub id: Uuid,
+    pub id: ModelID,
     pub full_name: String,
     pub photo: Option<String>,
 }
@@ -23,7 +23,7 @@ impl UserIndex {
     #[must_use]
     /// Creates a new `UserIndex` from the database row
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         first_name: String,
         last_name: Option<String>,
         photo: Option<String>,
@@ -36,53 +36,6 @@ impl UserIndex {
         }
     }
 }
-
-// /// Filters for Users
-// #[derive(Debug, Clone)]
-// pub enum UserFilter {
-//     FirstNameEq(Vec<String>),
-//     FirstNameNe(Vec<String>),
-//     LastNameEq(Vec<String>),
-//     LastNameNe(Vec<String>),
-//     FullNameEq(Vec<String>),
-//     FullNameNe(Vec<String>),
-
-//     EmailEq(Vec<String>),
-//     EmailNe(Vec<String>),
-//     PhoneEq(Vec<String>),
-//     PhoneNe(Vec<String>),
-
-//     GenderEq(Vec<String>),
-//     GenderNe(Vec<String>),
-
-//     DateOfBirthLt(Date),
-//     DateOfBirthEq(Vec<Date>),
-//     DateOfBirthNe(Vec<Date>),
-//     DateOfBirthGt(Date),
-
-//     GroupIdEq(Vec<String>),
-//     GroupIdNe(Vec<String>),
-//     GroupNameEq(Vec<String>),
-//     GroupNameNe(Vec<String>),
-
-//     PermissionIdEq(Vec<String>),
-//     PermissionIdNe(Vec<String>),
-//     PermissionCodeNameEq(Vec<String>),
-//     PermissionCodeNameNe(Vec<String>),
-
-//     DateJoinedLt(Date),
-//     DateJoinedEq(Vec<Date>),
-//     DateJoinedNe(Vec<Date>),
-//     DateJoinedGt(Date),
-
-//     LastLoginLt(Date),
-//     LastLoginEq(Vec<Date>),
-//     LastLoginNe(Vec<Date>),
-//     LastLoginGt(Date),
-
-//     HasSessionEq,
-//     HasSessionNe,
-// }
 
 // Concatenate two names together
 #[allow(clippy::needless_pass_by_value)]

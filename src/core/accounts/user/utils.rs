@@ -1,11 +1,10 @@
 //! User helpers impls
 
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{
     error::ServerResult, server::state::DatabaseConnection,
-    services::produce::harvest::harvest_max_age,
+    services::produce::harvest::harvest_max_age, types::ModelID,
 };
 
 /// Checks if user is farmer
@@ -13,14 +12,14 @@ use crate::{
 /// # Errors
 ///
 /// Return database error
-pub async fn user_is_farmer(user_id: Uuid, db: DatabaseConnection) -> ServerResult<bool> {
+pub async fn user_is_farmer(user_id: ModelID, db: DatabaseConnection) -> ServerResult<bool> {
     match sqlx::query!(
         r#"
             SELECT user_.is_farmer
             FROM accounts.users user_
             WHERE user_.id = $1
         "#,
-        user_id
+        user_id.0
     )
     .fetch_one(&db.pool)
     .await
@@ -39,7 +38,7 @@ pub async fn user_is_farmer(user_id: Uuid, db: DatabaseConnection) -> ServerResu
 ///
 /// Return database error
 pub async fn user_delete(
-    user_id: Uuid,
+    user_id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
     match sqlx::query!(
@@ -47,9 +46,9 @@ pub async fn user_delete(
             DELETE FROM accounts.users user_
             WHERE user_.id = $1
         "#,
-        user_id
+        user_id.0
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -69,7 +68,7 @@ pub async fn user_delete(
 ///
 /// Return database error
 pub async fn session_delete(
-    user_id: Uuid,
+    user_id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
     match sqlx::query!(
@@ -77,9 +76,9 @@ pub async fn session_delete(
             DELETE FROM auth.sessions session
             WHERE session.user_id = $1
         "#,
-        user_id
+        user_id.0
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -97,14 +96,17 @@ pub async fn session_delete(
 }
 
 /// Fetches user profile photo path from the database
-pub async fn get_user_photo(user_id: Uuid, db: DatabaseConnection) -> ServerResult<Option<String>> {
+pub async fn get_user_photo(
+    user_id: ModelID,
+    db: DatabaseConnection,
+) -> ServerResult<Option<String>> {
     match sqlx::query!(
         r#"
             SELECT profile.photo
             FROM accounts.user_profiles profile
             WHERE profile.user_id = $1
         "#,
-        user_id
+        user_id.0
     )
     .fetch_one(&db.pool)
     .await
@@ -129,7 +131,7 @@ pub async fn get_user_photo(user_id: Uuid, db: DatabaseConnection) -> ServerResu
 ///
 /// Return database error
 pub async fn delete_user_farms(
-    user_id: Uuid,
+    user_id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
     match sqlx::query!(
@@ -154,9 +156,9 @@ pub async fn delete_user_farms(
                 WHERE stat.count = 0
             );
         "#,
-        user_id
+        user_id.0
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -179,7 +181,7 @@ pub async fn delete_user_farms(
 ///
 /// Return database error
 pub async fn archive_user_farms(
-    user_id: Uuid,
+    user_id: ModelID,
     deleted_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
@@ -208,10 +210,10 @@ pub async fn archive_user_farms(
                 WHERE stat.count > 0
             );
         "#,
-        user_id,
+        user_id.0,
         deleted_at.date(),
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -228,7 +230,7 @@ pub async fn archive_user_farms(
     }
 }
 
-// ---Location---
+// ===== Location =====
 
 /// Delete user active locations
 ///
@@ -236,7 +238,7 @@ pub async fn archive_user_farms(
 ///
 /// Return database error
 pub async fn delete_user_locations(
-    user_id: Uuid,
+    user_id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
     match sqlx::query!(
@@ -261,9 +263,9 @@ pub async fn delete_user_locations(
                 WHERE stat.count = 0
             );
         "#,
-        user_id,
+        user_id.0,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -286,7 +288,7 @@ pub async fn delete_user_locations(
 ///
 /// Return database error
 pub async fn archive_user_locations(
-    user_id: Uuid,
+    user_id: ModelID,
     deleted_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
@@ -314,10 +316,10 @@ pub async fn archive_user_locations(
                 WHERE stat.count > 0
             );
         "#,
-        user_id,
+        user_id.0,
         deleted_at.date(),
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -334,7 +336,7 @@ pub async fn archive_user_locations(
     }
 }
 
-// ---Harvest----
+// ===== Harvest =====
 
 /// Delete user active harvests
 ///
@@ -342,7 +344,7 @@ pub async fn archive_user_locations(
 ///
 /// Return database error
 pub async fn delete_user_harvests(
-    user_id: Uuid,
+    user_id: ModelID,
     finished_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
@@ -363,11 +365,11 @@ pub async fn delete_user_harvests(
                 harvest.created_at > $3
             )
         "#,
-        user_id,
+        user_id.0,
         finished_at.date(),
         max_age,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -390,7 +392,7 @@ pub async fn delete_user_harvests(
 ///
 /// Return database error
 pub async fn archive_user_harvests(
-    user_id: Uuid,
+    user_id: ModelID,
     finished_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
@@ -415,10 +417,10 @@ pub async fn archive_user_harvests(
             )
         "#,
         finished_at.date(),
-        user_id,
+        user_id.0,
         max_age,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -441,9 +443,9 @@ pub async fn archive_user_harvests(
 ///
 /// Return database error
 pub async fn user_harvest_photos(
-    user_id: Uuid,
+    user_id: ModelID,
     db: DatabaseConnection,
-) -> ServerResult<Vec<serde_json::Value>> {
+) -> ServerResult<Vec<Vec<String>>> {
     match sqlx::query!(
         r#"
             SELECT harvest.images
@@ -457,7 +459,7 @@ pub async fn user_harvest_photos(
                 WHERE farm.owner_id = $1
             )
         "#,
-        user_id
+        user_id.0
     )
     .fetch_all(&db.pool)
     .await

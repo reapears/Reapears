@@ -1,28 +1,23 @@
 //! Cultivar http handlers impls
 
-use std::collections::HashMap;
-
 use axum::{
     extract::{Json, Multipart, Query, State},
     http::StatusCode,
 };
 
-use uuid::Uuid;
-
 use crate::{
-    auth::CurrentUser,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidatedJson},
+    auth::FarmerUser,
+    endpoint::{EndpointRejection, EndpointResult},
     files,
     server::state::DatabaseConnection,
-    services::farmers::location::permissions::check_user_owns_location,
-    settings::harvest_uploads_dir,
-    types::Pagination,
+    settings::HARVEST_UPLOAD_DIR,
+    types::{ModelID, Pagination},
 };
 
 use super::{
-    forms::{HarvestCreateForm, HarvestInsertData, HarvestUpdateData, HarvestUpdateForm},
-    models::{Harvest, HarvestImages, HarvestList},
-    permissions::{check_user_can_update_harvest, check_user_owns_harvest},
+    forms::{HarvestCreateForm, HarvestUpdateForm},
+    models::{Harvest, HarvestList},
+    permissions::check_user_owns_harvest,
     utils::delete_harvest_photos,
     HARVEST_MAX_IMAGE,
 };
@@ -43,7 +38,7 @@ pub async fn harvest_list(
 /// Handles the `GET /harvests/:harvest_id` route.
 #[tracing::instrument(skip(db))]
 pub async fn harvest_detail(
-    ModelId(harvest_id): ModelId<Uuid>,
+    harvest_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<Harvest>> {
     Harvest::find(harvest_id, db).await.map_or_else(
@@ -58,64 +53,43 @@ pub async fn harvest_detail(
 }
 
 /// Handles the `POST /harvests` route.
-#[tracing::instrument(skip(current_user, db, form))]
+#[tracing::instrument(skip(user, db, form))]
+#[allow(unused_variables)]
 pub async fn harvest_create(
-    current_user: CurrentUser,
+    #[allow(unused_variables)] user: FarmerUser,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<HarvestCreateForm>,
+    form: HarvestCreateForm,
 ) -> EndpointResult<StatusCode> {
-    if current_user.is_farmer {
-        let values: HarvestInsertData = form.into();
-        let check_permissions =
-            check_user_owns_location(current_user.id, values.location_id, db.clone());
-        match check_permissions.await {
-            Ok(()) => Harvest::insert(values, db).await.map_or_else(
-                |_err| Err(EndpointRejection::internal_server_error()),
-                |_harvest_id| Ok(StatusCode::CREATED),
-            ),
-            Err(err) => Err(err),
-        }
-    } else {
-        Err(EndpointRejection::BadRequest(
-            "Create a farm, to start listing harvests!".into(),
-        ))
-    }
+    Harvest::insert(form.into(), db).await.map_or_else(
+        |_err| Err(EndpointRejection::internal_server_error()),
+        |_harvest_id| Ok(StatusCode::CREATED),
+    )
 }
 
 /// Handles the `PUT /harvests/:harvest_id` route.
-#[tracing::instrument(skip(current_user, db, form))]
+#[tracing::instrument(skip(user, db, form))]
 pub async fn harvest_update(
-    current_user: CurrentUser,
-    ModelId(harvest_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: FarmerUser,
+    harvest_id: ModelID,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<HarvestUpdateForm>,
+    form: HarvestUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    let values: HarvestUpdateData = form.into();
-    let check_permissions = if let Some(location_id) = values.location_id {
-        // location id is provided, check also the location belongs to current user
-        check_user_can_update_harvest(current_user.id, location_id, harvest_id, db.clone()).await
-    } else {
-        // Check only the harvest belong to the current user
-        check_user_owns_harvest(current_user.id, harvest_id, db.clone()).await
-    };
-    match check_permissions {
-        Ok(()) => Harvest::update(harvest_id, values, db).await.map_or_else(
+    Harvest::update(harvest_id, form.into(), db)
+        .await
+        .map_or_else(
             |_err| Err(EndpointRejection::internal_server_error()),
             |_| Ok(StatusCode::OK),
-        ),
-
-        Err(err) => Err(err),
-    }
+        )
 }
 
 /// Handles the `DELETE /harvests/:harvest_id` route.
-#[tracing::instrument(skip(current_user, db))]
+#[tracing::instrument(skip(user, db))]
 pub async fn harvest_delete(
-    current_user: CurrentUser,
-    ModelId(harvest_id): ModelId<Uuid>,
+    user: FarmerUser,
+    harvest_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    let check_permissions = check_user_owns_harvest(current_user.id, harvest_id, db.clone());
+    let check_permissions = check_user_owns_harvest(user.id(), harvest_id, db.clone());
     match check_permissions.await {
         Ok(()) => Harvest::delete(harvest_id, db).await.map_or_else(
             |_err| Err(EndpointRejection::internal_server_error()),
@@ -126,49 +100,38 @@ pub async fn harvest_delete(
 }
 
 /// Handles the `POST /harvests/:harvest_id/photos` route.
-#[tracing::instrument(skip(current_user, db, multipart))]
+#[tracing::instrument(skip(user, db, multipart))]
 #[allow(clippy::redundant_closure)]
 pub async fn harvest_image_uploads(
-    current_user: CurrentUser,
-    ModelId(harvest_id): ModelId<Uuid>,
+    user: FarmerUser,
+    harvest_id: ModelID,
     State(db): State<DatabaseConnection>,
     multipart: Multipart,
-) -> EndpointResult<Json<HarvestImages>> {
-    let check_permissions = check_user_owns_harvest(current_user.id, harvest_id, db.clone());
+) -> EndpointResult<Json<Vec<String>>> {
+    let check_permissions = check_user_owns_harvest(user.id(), harvest_id, db.clone());
 
     match check_permissions.await {
         Ok(()) => {
             let (handler, mut uploads) = files::accept_uploads(multipart, HARVEST_MAX_IMAGE);
-            handler.accept().await?; // Receive files from the client
 
-            let mut file_names = HashMap::new();
-            let mut field_names = ["cover", "n1", "n2", "n3", "n4"].into_iter();
+            // spawn image receiving task
+            tokio::spawn(async move { handler.accept().await });
+
+            let mut paths = Vec::with_capacity(HARVEST_MAX_IMAGE as usize);
 
             while let Some(file) = uploads.files().await {
-                let label = field_names
-                    .next()
-                    .ok_or_else(|| EndpointRejection::internal_server_error())?;
-
-                file_names.insert(label, format!("{}.jpg", file.id));
-
                 // Save an image to the file system
-                files::save_image(file, harvest_uploads_dir()).await?;
+                paths.push(format!("{}.jpg", file.id));
+                files::save_image(file, HARVEST_UPLOAD_DIR).await?;
             }
 
-            // Convert to HarvestImages
-            // Safety: We're checking above that file.field_name is in field_names
-            let json = serde_json::to_value(file_names).unwrap();
-            let saved_to: HarvestImages = serde_json::from_str(&json.to_string()).unwrap();
-
             // Save image path to the database
-            let (new_images, old_images) = Harvest::insert_photos(harvest_id, saved_to, db).await?;
-
-            // Delete old images
-            if let Some(old_images) = old_images {
+            // and delete old images if there is some
+            if let Some(old_images) = Harvest::insert_photos(harvest_id, paths.clone(), db).await? {
                 tokio::spawn(async move { delete_harvest_photos(old_images).await });
             }
 
-            Ok(Json(new_images))
+            Ok(Json(paths))
         }
         Err(err) => Err(err),
     }
@@ -177,13 +140,13 @@ pub async fn harvest_image_uploads(
 /// Handles the `DELETE /harvests/:harvest_id/photos` route.
 ///
 /// Deletes all images uploaded for this harvest
-#[tracing::instrument(skip(current_user, db))]
+#[tracing::instrument(skip(user, db))]
 pub async fn harvest_image_delete(
-    current_user: CurrentUser,
-    ModelId(harvest_id): ModelId<Uuid>,
+    user: FarmerUser,
+    harvest_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    let check_permissions = check_user_owns_harvest(current_user.id, harvest_id, db.clone());
+    let check_permissions = check_user_owns_harvest(user.0.id, harvest_id, db.clone());
     match check_permissions.await {
         Ok(()) => Harvest::delete_photos(harvest_id, db).await.map_or_else(
             |_err| Err(EndpointRejection::internal_server_error()),

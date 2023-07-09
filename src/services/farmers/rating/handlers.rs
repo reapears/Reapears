@@ -4,12 +4,12 @@ use axum::{
     extract::{Json, Query, State},
     http::StatusCode,
 };
-use uuid::Uuid;
 
 use crate::{
     auth::CurrentUser,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidatedJson},
+    endpoint::{EndpointRejection, EndpointResult},
     server::state::DatabaseConnection,
+    types::ModelID,
     types::Pagination,
 };
 
@@ -37,7 +37,7 @@ pub async fn farm_rating_list(
 /// Handles the `GET /farms/:farm_id/ratings` route.
 #[tracing::instrument(skip(db))]
 pub async fn farm_ratings(
-    ModelId(farm_id): ModelId<Uuid>,
+    farm_id: ModelID,
     pg: Option<Query<Pagination>>,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<FarmRatingList>> {
@@ -53,7 +53,7 @@ pub async fn farm_ratings(
 /// Handles the `GET /farms/ratings/rating_id` route.
 #[tracing::instrument(skip(db))]
 pub async fn farm_rating_detail(
-    ModelId(rating_id): ModelId<Uuid>,
+    rating_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<FarmRating>> {
     FarmRating::find(rating_id, db).await.map_or_else(
@@ -68,14 +68,14 @@ pub async fn farm_rating_detail(
 }
 
 /// Handles the `POST /farms/:farm_id/ratings` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user, form))]
 pub async fn farm_rating_create(
-    current_user: CurrentUser,
-    ModelId(farm_id): ModelId<Uuid>,
+    user: CurrentUser,
+    farm_id: ModelID,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<FarmRatingCreateForm>,
+    form: FarmRatingCreateForm,
 ) -> EndpointResult<StatusCode> {
-    FarmRating::insert(form.data(farm_id, current_user.id), db)
+    FarmRating::insert(form.data(farm_id, user.id), db)
         .await
         .map_or_else(
             |_err| Err(EndpointRejection::internal_server_error()),
@@ -84,35 +84,30 @@ pub async fn farm_rating_create(
 }
 
 /// Handles the `PUT /farms/ratings/rating_id` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user, form))]
 pub async fn farm_rating_update(
-    current_user: CurrentUser,
-    ModelId(rating_id): ModelId<Uuid>,
+    #[allow(unused_variables)] user: CurrentUser,
+    rating_id: ModelID,
     State(db): State<DatabaseConnection>,
-    ValidatedJson(form): ValidatedJson<FarmRatingUpdateForm>,
+    form: FarmRatingUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    //Validate user owns the rating
-    let check_permissions = check_user_owns_rating(current_user.id, rating_id, db.clone());
-    match check_permissions.await {
-        Ok(()) => FarmRating::update(rating_id, form.into(), db)
-            .await
-            .map_or_else(
-                |_err| Err(EndpointRejection::internal_server_error()),
-                |_| Ok(StatusCode::OK),
-            ),
-        Err(err) => Err(err),
-    }
+    FarmRating::update(rating_id, form.into(), db)
+        .await
+        .map_or_else(
+            |_err| Err(EndpointRejection::internal_server_error()),
+            |_| Ok(StatusCode::OK),
+        )
 }
 
 /// Handles the `DELETE /farms/ratings/rating_id` route.
-#[tracing::instrument(skip(db))]
+#[tracing::instrument(skip(db, user))]
 pub async fn farm_rating_delete(
-    current_user: CurrentUser,
-    ModelId(rating_id): ModelId<Uuid>,
+    user: CurrentUser,
+    rating_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
     //Review redirection
-    let check_permissions = check_user_owns_rating(current_user.id, rating_id, db.clone());
+    let check_permissions = check_user_owns_rating(user.id, rating_id, db.clone());
     match check_permissions.await {
         Ok(()) => FarmRating::delete(rating_id, db).await.map_or_else(
             |_err| Err(EndpointRejection::internal_server_error()),

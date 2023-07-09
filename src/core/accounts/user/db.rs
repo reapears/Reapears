@@ -1,7 +1,6 @@
 //! User database impls
 
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{
     accounts::{
@@ -11,6 +10,7 @@ use crate::{
     error::ServerResult,
     server::state::DatabaseConnection,
     services::produce::harvest::delete_harvest_photos_list,
+    types::ModelID,
     types::Pagination,
 };
 
@@ -53,7 +53,7 @@ impl User {
                     .into_iter()
                     .map(|rec| {
                         UserIndex::from_row(
-                            rec.user_id,
+                            rec.user_id.into(),
                             rec.user_first_name,
                             rec.user_last_name,
                             rec.user_photo,
@@ -72,7 +72,7 @@ impl User {
 
     /// Inserts  new user into the database
     #[tracing::instrument(skip(db, user))]
-    pub async fn insert(user: SignUpData, db: DatabaseConnection) -> ServerResult<Uuid> {
+    pub async fn insert(user: SignUpData, db: DatabaseConnection) -> ServerResult<ModelID> {
         let mut tx = db.pool.begin().await?;
         let user_id = user.id;
         match sqlx::query!(
@@ -90,7 +90,7 @@ impl User {
                 )
                  VALUES($1, $2, $3, $4, $5, $6, false, $7, $8);
             "#,
-            user_id,
+            user_id.0,
             user.first_name,
             user.last_name,
             user.phc_string,
@@ -99,7 +99,7 @@ impl User {
             user.date_joined,
             user.account_locked,
         )
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await
         {
             Ok(result) => {
@@ -129,7 +129,7 @@ impl User {
     pub async fn find_by_email(
         email: String,
         db: DatabaseConnection,
-    ) -> ServerResult<Option<(Uuid, String)>> {
+    ) -> ServerResult<Option<(ModelID, String)>> {
         match sqlx::query!(
             r#"
                 SELECT user_.id AS user_id,
@@ -144,7 +144,7 @@ impl User {
         .fetch_optional(&db.pool)
         .await
         {
-            Ok(rec) => Ok(rec.map(|rec| (rec.user_id, rec.first_name))),
+            Ok(rec) => Ok(rec.map(|rec| (rec.user_id.into(), rec.first_name))),
             Err(err) => {
                 tracing::error!("Database error, failed to fetch user by email: {}", err);
                 Err(err.into())
@@ -154,7 +154,7 @@ impl User {
 
     /// Add or remove user is superuser
     pub async fn set_superuser(
-        user_id: Uuid,
+        user_id: ModelID,
         is_superuser: bool,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -166,7 +166,7 @@ impl User {
                 WHERE user_.id = $2
             "#,
             is_superuser,
-            user_id
+            user_id.0
         )
         .execute(&db.pool)
         .await
@@ -184,7 +184,7 @@ impl User {
 
     /// Add or remove user is staff
     pub async fn set_staff(
-        user_id: Uuid,
+        user_id: ModelID,
         is_staff: bool,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -196,7 +196,7 @@ impl User {
                 WHERE user_.id = $2
             "#,
             is_staff,
-            user_id
+            user_id.0
         )
         .execute(&db.pool)
         .await
@@ -226,9 +226,9 @@ impl User {
                "#,
             values.account_locked_reason,
             values.account_locked_until,
-            values.user_id
+            values.user_id.0
         )
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await
         {
             Ok(result) => {
@@ -249,7 +249,7 @@ impl User {
 
     /// Unlock user account
     #[tracing::instrument(skip(db))]
-    pub async fn unlock_account(user_id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn unlock_account(user_id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 UPDATE accounts.users user_
@@ -258,7 +258,7 @@ impl User {
                     account_locked_until = NULL
                 WHERE user_.id = $1;
                 "#,
-            user_id
+            user_id.0
         )
         .execute(&db.pool)
         .await
@@ -276,7 +276,7 @@ impl User {
 
     /// Deletes user from the database
     #[tracing::instrument(skip(db))]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         let pool = db.clone();
         let profile_photo = get_user_photo(id, pool.clone()).await?;
         let mut tx = db.pool.begin().await?;
@@ -316,13 +316,13 @@ impl User {
     }
 
     /// Deletes unconfirmed user account from the database
-    pub async fn delete_unverified(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete_unverified(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 DELETE FROM accounts.users user_
                 WHERE user_.id = $1
             "#,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await

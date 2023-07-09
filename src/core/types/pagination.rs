@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 const PAGINATION_PAGE_DEFAULT: u64 = 1;
 const PAGINATION_LIMIT_DEFAULT: u64 = 20;
 
-/// Configure the number of rows and from which index
-/// the rows should be returned from database
+/// Configure the offset and limit of
+/// the rows returned from database
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Pagination {
     /// Max number of records to be returned

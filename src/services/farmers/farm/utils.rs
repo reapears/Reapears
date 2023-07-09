@@ -1,12 +1,12 @@
 //! Farm helpers impls
 
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{
     error::ServerResult,
     server::state::DatabaseConnection,
     services::{farmers::location::forms::LocationInsertData, produce::harvest::harvest_max_age},
+    types::ModelID,
 };
 
 /// Insert farm-location into the database
@@ -29,16 +29,16 @@ pub async fn location_insert(
             )
             VALUES($1, $2, $3, $4, $5, $6, $7, false, $8);
         "#,
-        location.id,
-        location.farm_id,
+        location.id.0,
+        location.farm_id.0,
         location.place_name,
-        location.country_id,
-        location.region_id,
+        location.country_id.0,
+        location.region_id.0,
         location.description,
         location.coords,
         location.created_at,
     )
-    .execute(tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -55,7 +55,7 @@ pub async fn location_insert(
     }
 }
 
-// ---User---
+// ===== User =====
 
 /// Update user `is_farmer` into the database
 ///
@@ -64,7 +64,7 @@ pub async fn location_insert(
 /// Return database error
 pub async fn update_user_is_farmer(
     is_farmer: bool,
-    id: Uuid,
+    id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
     match sqlx::query!(
@@ -74,9 +74,9 @@ pub async fn update_user_is_farmer(
             WHERE id = $2;
        "#,
         is_farmer,
-        id,
+        id.0,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(_result) => Ok(()),
@@ -93,9 +93,9 @@ pub async fn update_user_is_farmer(
 ///
 /// Return database error
 pub async fn user_farm_count(
-    farm_id: Uuid,
+    farm_id: ModelID,
     db: DatabaseConnection,
-) -> ServerResult<(Option<Uuid>, i64)> {
+) -> ServerResult<(Option<ModelID>, i64)> {
     match sqlx::query!(
         r#"
             SELECT farm.owner_id AS user_id,
@@ -109,12 +109,12 @@ pub async fn user_farm_count(
                 )
             GROUP BY farm.owner_id
         "#,
-        farm_id,
+        farm_id.0,
     )
     .fetch_one(&db.pool)
     .await
     {
-        Ok(rec) => Ok((rec.user_id, rec.farm_count)),
+        Ok(rec) => Ok((rec.user_id.map(Into::into), rec.farm_count)),
         Err(err) => {
             tracing::error!("Database error, failed to fetch farm-count: {}", err);
             Err(err.into())
@@ -122,7 +122,7 @@ pub async fn user_farm_count(
     }
 }
 
-// ---Farm---
+// ==== Farm =====
 
 /// Delete farm from the database
 ///
@@ -130,7 +130,7 @@ pub async fn user_farm_count(
 ///
 /// Return database error
 pub async fn delete_farm(
-    farm_id: Uuid,
+    farm_id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
     match sqlx::query!(
@@ -138,9 +138,9 @@ pub async fn delete_farm(
             DELETE FROM services.farms farm
             WHERE farm.id = $1
         "#,
-        farm_id
+        farm_id.0
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -160,7 +160,7 @@ pub async fn delete_farm(
 ///
 /// Return database error
 pub async fn archive_farm(
-    farm_id: Uuid,
+    farm_id: ModelID,
     deleted_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<()> {
@@ -172,9 +172,9 @@ pub async fn archive_farm(
             WHERE farm.id = $2
         "#,
         deleted_at.date(),
-        farm_id
+        farm_id.0
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -191,7 +191,7 @@ pub async fn archive_farm(
     }
 }
 
-// ---Location---
+// ===== Location =====
 
 /// Delete farm active locations
 ///
@@ -199,7 +199,7 @@ pub async fn archive_farm(
 ///
 /// Return database error
 pub async fn delete_farm_locations(
-    farm_id: Uuid,
+    farm_id: ModelID,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
     match sqlx::query!(
@@ -224,9 +224,9 @@ pub async fn delete_farm_locations(
                 WHERE stat.count = 0
             );
         "#,
-        farm_id,
+        farm_id.0,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -249,7 +249,7 @@ pub async fn delete_farm_locations(
 ///
 /// Return database error
 pub async fn archive_farm_locations(
-    farm_id: Uuid,
+    farm_id: ModelID,
     deleted_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
@@ -277,10 +277,10 @@ pub async fn archive_farm_locations(
                 WHERE stat.count > 0
             );
         "#,
-        farm_id,
+        farm_id.0,
         deleted_at.date(),
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -297,7 +297,7 @@ pub async fn archive_farm_locations(
     }
 }
 
-// ---Harvest---
+// ===== Harvest =====
 
 /// Delete farm active harvests
 ///
@@ -305,7 +305,7 @@ pub async fn archive_farm_locations(
 ///
 /// Return database error
 pub async fn delete_farm_harvests(
-    farm_id: Uuid,
+    farm_id: ModelID,
     finished_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
@@ -324,11 +324,11 @@ pub async fn delete_farm_harvests(
                 harvest.created_at > $3
             )
         "#,
-        farm_id,
+        farm_id.0,
         finished_at.date(),
         max_age,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -351,7 +351,7 @@ pub async fn delete_farm_harvests(
 ///
 /// Return database error
 pub async fn archive_farm_harvests(
-    farm_id: Uuid,
+    farm_id: ModelID,
     finished_at: OffsetDateTime,
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
 ) -> ServerResult<u64> {
@@ -374,10 +374,10 @@ pub async fn archive_farm_harvests(
             )
         "#,
         finished_at.date(),
-        farm_id,
+        farm_id.0,
         max_age,
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     {
         Ok(result) => {
@@ -400,7 +400,7 @@ pub async fn archive_farm_harvests(
 ///
 /// Return database error
 pub async fn farm_archived_harvest_count(
-    farm_id: Uuid,
+    farm_id: ModelID,
     db: DatabaseConnection,
 ) -> ServerResult<i64> {
     match sqlx::query!(
@@ -415,7 +415,7 @@ pub async fn farm_archived_harvest_count(
             )
             AND harvest.finished = true;
         "#,
-        farm_id
+        farm_id.0
     )
     .fetch_one(&db.pool)
     .await
@@ -437,9 +437,9 @@ pub async fn farm_archived_harvest_count(
 ///
 /// Return database error
 pub async fn farm_harvest_images(
-    farm_id: Uuid,
+    farm_id: ModelID,
     db: DatabaseConnection,
-) -> ServerResult<Vec<serde_json::Value>> {
+) -> ServerResult<Vec<Vec<String>>> {
     match sqlx::query!(
         r#"
             SELECT harvest.images
@@ -451,7 +451,7 @@ pub async fn farm_harvest_images(
                 WHERE location_.farm_id = $1
             )
         "#,
-        farm_id
+        farm_id.0
     )
     .fetch_all(&db.pool)
     .await

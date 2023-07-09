@@ -1,16 +1,19 @@
 // //! Email forms impls
 
-use axum::async_trait;
+use axum::{
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, Json},
+    http::Request,
+};
 use serde::Deserialize;
 use time::OffsetDateTime;
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
     auth::{Token, TokenHash},
-    db,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidateForm},
+    endpoint::EndpointRejection,
     server::state::ServerState,
+    types::ModelID,
 };
 
 /// Email create form
@@ -21,11 +24,12 @@ pub struct EmailForm {
 }
 
 impl EmailForm {
-    // Return `EmailInsertPendingData` and verification code
+    // Return (`EmailInsertPendingData`, approve_plaintext, verify_plaintext)
     #[must_use]
     pub fn pending_update_data(self) -> (EmailInsertPendingData, String) {
-        let (plaintext, hash) = Token::new_code().into_parts();
-        (EmailInsertPendingData::new(self.email, hash), plaintext)
+        let (approve_text, approve_hash) = Token::new_code().into_parts();
+        let values = EmailInsertPendingData::new(self.email, approve_hash);
+        (values, approve_text)
     }
 }
 
@@ -51,39 +55,44 @@ impl EmailInsertData {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for EmailForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate EmailForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
-            Ok(()) => Ok(self),
+impl<B> FromRequest<ServerState, B> for EmailForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
+        match input.validate() {
+            Ok(()) => Ok(input),
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
     }
 }
 
-// ---PendingUpdate---
+// ===== Email Pending Updates impls =====
 
 /// Email pending update cleaned data
 #[derive(Debug, Clone)]
 pub struct EmailInsertPendingData {
-    pub id: Uuid,
+    pub id: ModelID,
     pub new_email: String,
-    pub token: TokenHash,
-    pub token_generated_at: OffsetDateTime,
+    pub previous_email_approval_code: TokenHash,
+    pub email_change_approved: bool,
+    pub generated_at: OffsetDateTime,
 }
 
 impl EmailInsertPendingData {
     /// Creates new email pending update insert data
-    fn new(new_email: String, token: TokenHash) -> Self {
+    fn new(new_email: String, approval_token: TokenHash) -> Self {
         Self {
-            id: db::model_id(),
+            id: ModelID::new(),
             new_email,
-            token,
-            token_generated_at: OffsetDateTime::now_utc(),
+            previous_email_approval_code: approval_token,
+            email_change_approved: false,
+            generated_at: OffsetDateTime::now_utc(),
         }
     }
 }
@@ -97,15 +106,17 @@ pub struct CodeConfirmForm {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for CodeConfirmForm {
-    #[tracing::instrument(skip(self, _state), name = "Validate CodeConfirmForm")]
-    async fn validate_form(
-        self,
-        _state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        match self.validate() {
-            Ok(()) => Ok(self),
+impl<B> FromRequest<ServerState, B> for CodeConfirmForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        match input.validate() {
+            Ok(()) => Ok(input),
             Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
         }
     }

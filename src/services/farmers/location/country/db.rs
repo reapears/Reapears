@@ -1,8 +1,6 @@
 //! Location country database impl
 
-use uuid::Uuid;
-
-use crate::{error::ServerResult, server::state::DatabaseConnection};
+use crate::{error::ServerResult, server::state::DatabaseConnection, types::ModelID};
 
 use super::{
     forms::{CountryInsertData, CountryUpdateData},
@@ -26,7 +24,7 @@ impl Country {
             Ok(records) => {
                 let countries = records
                     .into_iter()
-                    .map(|rec| Self::from_row(rec.id, rec.name))
+                    .map(|rec| Self::from_row(rec.id.into(), rec.name))
                     .collect();
 
                 Ok(countries)
@@ -43,7 +41,10 @@ impl Country {
 
     /// Inserts location country into the database
     #[tracing::instrument(name = "Insert Location-country", skip(db, country))]
-    pub async fn insert(country: CountryInsertData, db: DatabaseConnection) -> ServerResult<Uuid> {
+    pub async fn insert(
+        country: CountryInsertData,
+        db: DatabaseConnection,
+    ) -> ServerResult<ModelID> {
         match sqlx::query!(
             r#"
                 INSERT INTO services.countries (
@@ -52,7 +53,7 @@ impl Country {
                 )
                 VALUES ($1, $2);
             "#,
-            country.id,
+            country.id.0,
             country.name
         )
         .execute(&db.pool)
@@ -72,7 +73,7 @@ impl Country {
     /// Updates location country in the database
     #[tracing::instrument(name = "Update Location-country", skip(db, country))]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         country: CountryUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -83,7 +84,7 @@ impl Country {
                 WHERE country.id = $2
            "#,
             country.name,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await
@@ -101,13 +102,13 @@ impl Country {
 
     /// Deletes location country from the database
     #[tracing::instrument(name = "Delete Location-country", skip(db))]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 DELETE FROM services.countries country
                 WHERE country.id = $1
            "#,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await

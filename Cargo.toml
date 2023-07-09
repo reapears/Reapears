@@ -6,62 +6,90 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1", features = ["full", "tracing"] }
-tokio-util = { version = "0.7", features = ["io"] }
+# Async runtime
+tokio = { version = "1.29.1", features = ["full", "tracing"] }
+tokio-util = { version = "0.7.8", features = ["io"] }
 
-# http-server
-axum = { version = "0.6", features = ["multipart", "ws", "headers", "macros"] }
-axum-extra = { version = "0.7", features = [
+
+# Http server
+axum = { version = "0.6.18", features = [
+    "multipart",
+    "ws",
+    "headers",
+    "macros",
+] }
+axum-extra = { version = "0.7.4", features = [
     "cookie-private",
     "query",
     "erased-json",
 ] }
-hyper = { version = "0.14", features = ["full"] }
+hyper = { version = "0.14.27", features = ["full"] }
+bytes = "1.4.0"
 
-# database
-sqlx = { version = "0.6", features = [
-    "runtime-tokio-rustls",
+# Database drive
+sqlx = { version = "0.7.0", default-features = false, features = [
+    "tls-rustls",
+    "runtime-tokio",
     "postgres",
     "migrate",
+    "macros",
     "time",
     "json",
     "uuid",
-    "decimal",
+    "rust_decimal",
+    "bigdecimal",
 ] }
 
-# http-client
-reqwest = { version = "0.11", features = ["json", "rustls-tls", "trust-dns"] }
+# Http client
+reqwest = { version = "0.11.18", features = [
+    "json",
+    "rustls-tls",
+    "trust-dns",
+] }
 
-# middlewares
-tower = { version = "0.4", features = [
-    "retry",
-    "timeout",
-    "filter",
+# Middleware
+tower = { version = "0.4.13", features = [
+    "buffer",
     "limit",
     "load-shed",
+    "timeout",
+    "util",
 ] }
-tower-http = { version = "0.4", features = ["full"] }
+tower-http = { version = "0.4.1", features = [
+    "catch-panic",
+    "cors",
+    "fs",
+    "limit",
+    "normalize-path",
+    "propagate-header",
+    "request-id",
+    "sensitive-headers",
+    "timeout",
+    "trace",
+    "util",
+] }
 
-# data-serialization and validation
+# Json and data validation
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 validator = { version = "0.16", features = ["derive", "phone"] }
+minijinja = "1.0.3"
 
-# crypto
-argon2 = "0.5.0-pre.0"
-blake3 = "1"
-rand = "0.8"
-secrecy = "0.8"
+# Cryptograpy
+password-auth = "0.3.0"
+blake3 = "1.4.1"
+rand = "0.8.5"
+secrecy = "0.8.0"
 
-# tracing
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-appender = "0.2"
-console-subscriber = "0.1"
-color-eyre = "0.6"
+# Tracing
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+tracing-appender = "0.2.2"
+console-subscriber = "0.1.9"
+color-eyre = "0.6.2"
 
 # Emails
-lettre = { version = "0.10", default-features = false, features = [
+lettre = { version = "0.10.4", default-features = false, features = [
     "builder",
     "hostname",
     "smtp-transport",
@@ -70,25 +98,27 @@ lettre = { version = "0.10", default-features = false, features = [
     "tokio1-rustls-tls",
 ] }
 
-# cli-confing
-clap = { version = "4.0", features = ["derive"] }
-dotenvy = "0.15"
+# Cli and Confing
+clap = { version = "4.3.11", features = ["derive"] }
+dotenvy = "0.15.7"
 
-# Others
-camino = "1"
-geo = { version = "0.23", features = ["use-serde"] }
-image = { version = "0.24", features = ["webp-encoder"] }
-itertools = "0.10"
-time = { version = "0.3", features = ["serde", "serde-human-readable"] }
-uuid = { version = "1", features = [
+# Mics
+camino = "1.1.4"
+geo = { version = "0.25.1", features = ["use-serde"] }
+image = { version = "0.24.6", features = ["webp-encoder"] }
+itertools = "0.11.0"
+time = { version = "0.3.22", features = ["serde", "serde-human-readable"] }
+uuid = { version = "1.4.0", features = [
     "v4",
     "v7",
     "fast-rng",
     "macro-diagnostics",
     "serde",
 ] }
-rust_decimal = { version = "1", features = ["db-postgres", "serde-with-str"] }
-
+rust_decimal = { version = "1.30.0", features = [
+    "db-postgres",
+    "serde-with-str",
+] }
 
 
 # Profiles Section

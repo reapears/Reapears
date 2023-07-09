@@ -1,0 +1,15 @@
+Almost done, {{first_name}}!
+
+To secure your Reapers account,
+we just need to verify your email address: {{email}}
+
+follow this link to verify your email:
+{{link}}
+
+
+You are receiving this email because you recently created a new Reapears account.
+If this wasn't you, please ignore this email.
+Someone else might have typed your email address by mistake.
+
+Thanks,
+The Reapears team

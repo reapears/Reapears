@@ -1,17 +1,20 @@
 //! Session forms impls
 
-use axum::async_trait;
+use axum::{
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, Json},
+    http::Request,
+};
 use serde::Deserialize;
 use time::OffsetDateTime;
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
     accounts::user::models::User,
     auth::{verify_password, Token, TokenHash},
-    db,
-    endpoint::{EndpointRejection, EndpointResult, ModelId, ValidateForm},
+    endpoint::EndpointRejection,
     server::state::ServerState,
+    types::ModelID,
 };
 
 use super::models::Session;
@@ -27,7 +30,7 @@ pub struct LoginForm {
 
     /// User id is set if user login completed successfully
     #[serde(skip_deserializing)]
-    pub user_id: Option<Uuid>,
+    pub user_id: Option<ModelID>,
 }
 
 impl LoginForm {
@@ -43,7 +46,7 @@ impl LoginForm {
         let (plaintext, token_hash) = token.into_parts();
         (
             SessionInsert {
-                id: db::model_id(),
+                id: ModelID::new(),
                 user_id: self.user_id.unwrap(),
                 user_agent,
                 token: token_hash,
@@ -56,7 +59,7 @@ impl LoginForm {
 
     /// Sets `user_id`
     #[allow(clippy::missing_const_for_fn)]
-    fn set_user_id(self, id: Uuid) -> Self {
+    fn set_user_id(self, id: ModelID) -> Self {
         let mut this = self;
         this.user_id = Some(id);
         this
@@ -66,8 +69,8 @@ impl LoginForm {
 /// Session cleaned data
 #[derive(Debug, Clone)]
 pub struct SessionInsert {
-    pub id: Uuid,
-    pub user_id: Uuid,
+    pub id: ModelID,
+    pub user_id: ModelID,
     pub user_agent: String,
     pub token: TokenHash,
     pub created_at: OffsetDateTime,
@@ -75,16 +78,19 @@ pub struct SessionInsert {
 }
 
 #[async_trait]
-impl ValidateForm<ServerState> for LoginForm {
-    /// Validate and authenticates login details
-    async fn validate_form(
-        self,
-        state: &ServerState,
-        _model_id: Option<ModelId<Uuid>>,
-    ) -> EndpointResult<Self> {
-        static INVALID_CREDENTIALS: &str = "The username or password you have entered is invalid.";
+impl<B> FromRequest<ServerState, B> for LoginForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        const INVALID_CREDENTIALS: &str = "The username or password you have entered is invalid.";
+        let Json(input) = Json::<Self>::from_request(req, state).await?;
+
         let db = state.database.clone();
-        let email = self.email.clone();
+        let email = input.email.clone();
 
         let Some(user) = Session::find_user_by_email(email.clone(), db.clone()).await? else{
             return Err(EndpointRejection::BadRequest(INVALID_CREDENTIALS.into()));
@@ -106,11 +112,10 @@ impl ValidateForm<ServerState> for LoginForm {
             ));
         }
 
-        // Authenticate the user
-        let is_valid_password = verify_password(&self.password, user.phc_string).await?;
-        if is_valid_password {
-            // NB! don't forget the set the user_id
-            Ok(self.set_user_id(user.id))
+        // Authenticate the user; check the password in valid.
+        if verify_password(&input.password, user.phc_string).await? {
+            // NB! don't forget the set the user id
+            Ok(input.set_user_id(user.id))
         } else {
             tracing::info!("Login error, password incorrect.");
             Err(EndpointRejection::BadRequest(INVALID_CREDENTIALS.into()))

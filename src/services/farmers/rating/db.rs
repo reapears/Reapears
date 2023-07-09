@@ -1,8 +1,10 @@
 //! `FarmRating` database impl
 
-use uuid::Uuid;
-
-use crate::{error::ServerResult, server::state::DatabaseConnection, types::Pagination};
+use crate::{
+    error::ServerResult,
+    server::state::DatabaseConnection,
+    types::{ModelID, Pagination},
+};
 
 use super::{
     forms::{FarmRatingInsertData, FarmRatingUpdateData},
@@ -50,14 +52,14 @@ impl FarmRating {
                     .into_iter()
                     .map(|rec| {
                         Self::from_row(
-                            rec.farm_rating_id,
+                            rec.farm_rating_id.into(),
                             rec.farm_rating_grade,
                             rec.farm_rating_comment,
                             rec.farm_rating_updated_at
                                 .unwrap_or(rec.farm_rating_created_at),
-                            rec.farm_id,
+                            rec.farm_id.into(),
                             rec.farm_name,
-                            rec.user_id,
+                            rec.user_id.into(),
                             rec.user_first_name,
                             rec.user_last_name,
                             rec.user_photo,
@@ -76,7 +78,7 @@ impl FarmRating {
 
     /// Fetches farm-rating detail from the database
     #[tracing::instrument(name = "Find FarmRating", skip(db))]
-    pub async fn find(id: Uuid, db: DatabaseConnection) -> ServerResult<Option<Self>> {
+    pub async fn find(id: ModelID, db: DatabaseConnection) -> ServerResult<Option<Self>> {
         match sqlx::query!(
             r#"
                 SELECT farm_rating.id AS farm_rating_id,
@@ -100,21 +102,21 @@ impl FarmRating {
 
                 WHERE farm_rating.id = $1;
             "#,
-            id,
+            id.0,
         )
         .fetch_one(&db.pool)
         .await
         {
             Ok(rec) => {
                 let farm_rating = Self::from_row(
-                    rec.farm_rating_id,
+                    rec.farm_rating_id.into(),
                     rec.farm_rating_grade,
                     rec.farm_rating_comment,
                     rec.farm_rating_updated_at
                         .unwrap_or(rec.farm_rating_created_at),
-                    rec.farm_id,
+                    rec.farm_id.into(),
                     rec.farm_name,
-                    rec.user_id,
+                    rec.user_id.into(),
                     rec.user_first_name,
                     rec.user_last_name,
                     rec.user_photo,
@@ -138,7 +140,7 @@ impl FarmRating {
     pub async fn insert(
         farm_rating: FarmRatingInsertData,
         db: DatabaseConnection,
-    ) -> ServerResult<Uuid> {
+    ) -> ServerResult<ModelID> {
         match sqlx::query!(
             r#"
                 INSERT INTO services.farm_ratings(
@@ -151,9 +153,9 @@ impl FarmRating {
                 )
                 VALUES($1, $2, $3, $4, $5, $6)
             "#,
-            farm_rating.id,
-            farm_rating.user_id,
-            farm_rating.farm_id,
+            farm_rating.id.0,
+            farm_rating.user_id.0,
+            farm_rating.farm_id.0,
             i32::from(farm_rating.grade),
             farm_rating.comment,
             farm_rating.created_at
@@ -175,7 +177,7 @@ impl FarmRating {
     /// Updates farm-rating in the database
     #[tracing::instrument(name = "Update FarmRating", skip(db, farm_rating))]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         farm_rating: FarmRatingUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -190,7 +192,7 @@ impl FarmRating {
             farm_rating.grade.map(i32::from),
             farm_rating.comment,
             farm_rating.updated_at,
-            id,
+            id.0,
         )
         .execute(&db.pool)
         .await
@@ -208,13 +210,13 @@ impl FarmRating {
 
     /// Deletes farm-rating from the database
     #[tracing::instrument(name = "Delete FarmRating", skip(db))]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 DELETE FROM services.farm_ratings farm_rating
                     WHERE farm_rating.id = $1
             "#,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await
@@ -233,7 +235,7 @@ impl FarmRating {
     // Fetch farm's ratings from the database
     #[allow(dead_code)]
     pub async fn records_for_farm(
-        farm_id: Uuid,
+        farm_id: ModelID,
         pg: Pagination,
         db: DatabaseConnection,
     ) -> ServerResult<FarmRatingList> {
@@ -264,7 +266,7 @@ impl FarmRating {
                 LIMIT $2
                 OFFSET $3
             "#,
-            farm_id,
+            farm_id.0,
             limit,
             offset
         )
@@ -276,14 +278,14 @@ impl FarmRating {
                     .into_iter()
                     .map(|rec| {
                         Self::from_row(
-                            rec.farm_rating_id,
+                            rec.farm_rating_id.into(),
                             rec.farm_rating_grade,
                             rec.farm_rating_comment,
                             rec.farm_rating_updated_at
                                 .unwrap_or(rec.farm_rating_created_at),
-                            rec.farm_id,
+                            rec.farm_id.into(),
                             rec.farm_name,
-                            rec.user_id,
+                            rec.user_id.into(),
                             rec.user_first_name,
                             rec.user_last_name,
                             rec.user_photo,

@@ -1,8 +1,6 @@
 //! Cultivar category database impl
 
-use uuid::Uuid;
-
-use crate::{error::ServerResult, server::state::DatabaseConnection};
+use crate::{error::ServerResult, server::state::DatabaseConnection, types::ModelID};
 
 use super::{
     forms::{CultivarCategoryInsertData, CultivarCategoryUpdateData},
@@ -26,7 +24,7 @@ impl CultivarCategory {
             Ok(records) => {
                 let categories = records
                     .into_iter()
-                    .map(|rec| Self::from_row(rec.id, rec.name))
+                    .map(|rec| Self::from_row(rec.id.into(), rec.name))
                     .collect();
 
                 Ok(categories)
@@ -46,7 +44,7 @@ impl CultivarCategory {
     pub async fn insert(
         category: CultivarCategoryInsertData,
         db: DatabaseConnection,
-    ) -> ServerResult<Uuid> {
+    ) -> ServerResult<ModelID> {
         match sqlx::query!(
             r#"
                 INSERT INTO services.cultivar_categories (
@@ -55,7 +53,7 @@ impl CultivarCategory {
                 )
                 VALUES ($1, $2);
             "#,
-            category.id,
+            category.id.0,
             category.name
         )
         .execute(&db.pool)
@@ -78,7 +76,7 @@ impl CultivarCategory {
     /// Updates cultivar category in the database
     #[tracing::instrument(name = "Update Cultivar-category", skip(db, category))]
     pub async fn update(
-        id: Uuid,
+        id: ModelID,
         category: CultivarCategoryUpdateData,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -89,7 +87,7 @@ impl CultivarCategory {
                 WHERE category.id = $2
            "#,
             category.name,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await
@@ -110,13 +108,13 @@ impl CultivarCategory {
 
     /// Deletes cultivar category from the database
     #[tracing::instrument(name = "Delete Cultivar-category", skip(db))]
-    pub async fn delete(id: Uuid, db: DatabaseConnection) -> ServerResult<()> {
+    pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
         match sqlx::query!(
             r#"
                 DELETE FROM services.cultivar_categories category
                 WHERE category.id = $1
            "#,
-            id
+            id.0
         )
         .execute(&db.pool)
         .await

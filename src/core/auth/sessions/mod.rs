@@ -8,6 +8,7 @@ pub mod db;
 pub mod forms;
 pub mod handlers;
 pub mod models;
+mod utils;
 
 /// Gets session token hash from the cookie jar
 #[must_use]

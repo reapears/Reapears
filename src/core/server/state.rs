@@ -54,7 +54,7 @@ impl FromRef<ServerState> for Key {
     }
 }
 
-// Database impls
+// ===== Database impls ======
 
 /// Postgres database connection
 #[derive(Clone, Debug)]

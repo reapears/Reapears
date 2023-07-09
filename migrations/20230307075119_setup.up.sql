@@ -3,6 +3,7 @@
 
 -- Schemas
 CREATE SCHEMA IF NOT EXISTS services;
+CREATE SCHEMA IF NOT EXISTS features;
 CREATE SCHEMA IF NOT EXISTS archives;
 CREATE SCHEMA IF NOT EXISTS accounts;
 CREATE SCHEMA IF NOT EXISTS auth;
@@ -64,18 +65,6 @@ CREATE TABLE accounts.phones(
     PRIMARY KEY(user_id)
 );
 
-
--- User govermanent id tables
--- May or may not endup in final product
-DROP TABLE IF EXISTS accounts.government_ids;
-CREATE TABLE accounts.government_ids(
-    user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
-    national_id text UNIQUE NOT NULL, --encripted
-    verified boolean NOT NULL,
-    PRIMARY KEY(user_id)
-);
-
-
 -- DROP TABLE IF EXISTS accounts.follows;
 -- CREATE TABLE accounts.follows(
 --     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
@@ -90,8 +79,11 @@ CREATE TABLE accounts.email_pending_updates(
     id uuid PRIMARY KEY,
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE NOT NULL UNIQUE,
     new_email text NOT NULL,
-    token bytea UNIQUE NOT NULL,
-    token_generated_at timestamptz NOT NULL
+    previous_email_approval_code bytea UNIQUE NOT NULL,
+    -- token will be set once the updates approved so it can be null
+    new_email_verify_token bytea UNIQUE,
+    email_change_approved boolean NOT NULL,
+    generated_at timestamptz NOT NULL
 );
 
 
@@ -118,16 +110,18 @@ CREATE TABLE auth.password_reset_tokens(
     PRIMARY KEY(user_id)
 );
 
--- DROP TABLE IF EXISTS auth.api_tokens;
--- CREATE TABLE auth.api_tokens(
---     id SERIAL PRIMARY KEY,
---     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE NOT NULL,
---     token bytea NOT NULL,
---     name text, -- not sure what is it
---     created_at timestamptz NOT NULL,
---     last_used_at timestamptz NOT NULL,
---     revoked boolean
--- );
+
+-- Stores api keys for authenticating frontend apps or users
+DROP TABLE IF EXISTS auth.api_tokens;
+CREATE TABLE auth.api_tokens(
+    id SERIAL PRIMARY KEY,
+    user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
+    token bytea NOT NULL UNIQUE,
+    belongs_to text, -- app / user
+    created_at timestamptz NOT NULL,
+    last_used_at timestamptz NOT NULL,
+    revoked boolean NOT NULL
+);
 
 -- Services(Schema) Tables
 
@@ -166,11 +160,16 @@ CREATE TABLE services.cultivars(
 DROP TABLE IF EXISTS services.farms;
 CREATE TABLE services.farms(
     id uuid PRIMARY KEY,
-    -- Owner id can be null because on user delete it's set to null
+    -- Owner id can be null because on user delete
+    -- it will be archived and the owner_id will be set to null
     -- if it has archived harvests
     owner_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     name text NOT NULL,
-    -- verified boolean NOT NULL DEFAULT FALSE,
+    logo text,
+    contact_number text,
+    contact_email text,
+    founded_at date,
+    verified boolean NOT NULL DEFAULT FALSE,
     registered_on date NOT NULL,
     deleted boolean NOT NULL,
     deleted_at date
@@ -205,8 +204,7 @@ CREATE TABLE services.locations(
     coords jsonb,
     created_at date NOT NULL,
     deleted boolean NOT NULL,
-    deleted_at date,
-    UNIQUE(id, farm_id)
+    deleted_at date
 );
 
 
@@ -248,7 +246,7 @@ CREATE TABLE services.harvests(
     type text,
     description text,
     available_at date NOT NULL,
-    images jsonb,
+    images text[],
     updated_at timestamptz,
     finished boolean NOT NULL,
     finished_at date,
@@ -268,29 +266,28 @@ CREATE TABLE services.harvests(
 
 
 -- -- Direct Messages(Shema) tables ??
--- DROP TABLE IF EXISTS services.direct_messages;
--- CREATE TABLE services.direct_messages(
---     id uuid PRIMARY KEY,
---     sender_id uuid REFERENCES accounts.users (id),
---     reciver_id uuid REFERENCES accounts.users (id),
---     message text NOT NULL,
---     msg_type text NOT NULL, -- text or image
---     sent_at timestamptz NOT NULL
--- );
+DROP TABLE IF EXISTS features.direct_messages;
+CREATE TABLE features.direct_messages(
+    id uuid PRIMARY KEY,
+    sender_id uuid REFERENCES accounts.users (id),
+    receiver_id uuid REFERENCES accounts.users (id),
+    content text NOT NULL,
+    sent_at timestamptz NOT NULL
+);
 
 
--- DROP TABLE IF EXISTS services.message_status;
--- CREATE TABLE services.message_status(
---     id uuid PRIMARY KEY,
---     user_id uuid REFERENCES accounts.users (id),
---     message_id uuid REFERENCES services.direct_messages (id),
---     is_sender boolean,
---     is_read boolean NOT NULL,
---     is_deleted boolean NOT NULL,
---     read_at timestamptz,
---     deleted_at timestamptz,
---     UNIQUE(user_id, message_id)
--- );
+DROP TABLE IF EXISTS features.message_status;
+CREATE TABLE features.message_status(
+    id uuid PRIMARY KEY,
+    user_id uuid REFERENCES accounts.users (id),
+    message_id uuid REFERENCES features.direct_messages (id),
+    is_author boolean,
+    is_read boolean NOT NULL,
+    is_deleted boolean NOT NULL,
+    read_at timestamptz,
+    deleted_at timestamptz,
+    UNIQUE(user_id, message_id)
+);
 
 
 -- VIEWS

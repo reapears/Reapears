@@ -1,9 +1,10 @@
 //! Password database impls
 
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use crate::{auth::TokenHash, error::ServerResult, server::state::DatabaseConnection};
+use crate::{
+    auth::TokenHash, error::ServerResult, server::state::DatabaseConnection, types::ModelID,
+};
 
 use super::PasswordModel;
 
@@ -13,14 +14,14 @@ impl PasswordModel {
     /// # Errors
     ///
     /// Return database error
-    pub async fn find(user_id: Uuid, db: DatabaseConnection) -> ServerResult<Option<String>> {
+    pub async fn find(user_id: ModelID, db: DatabaseConnection) -> ServerResult<Option<String>> {
         match sqlx::query!(
             r#"
             SELECT user_.phc_string
             FROM accounts.users user_
             WHERE user_.id = $1;
         "#,
-            user_id
+            user_id.0
         )
         .fetch_optional(&db.pool)
         .await
@@ -35,7 +36,7 @@ impl PasswordModel {
 
     /// Updates user password in the database
     pub async fn update(
-        user_id: Uuid,
+        user_id: ModelID,
         phc_string: String,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -47,7 +48,7 @@ impl PasswordModel {
             
             "#,
             phc_string,
-            user_id
+            user_id.0
         )
         .execute(&db.pool)
         .await
@@ -69,7 +70,7 @@ impl PasswordModel {
     pub async fn find_token(
         token: TokenHash,
         db: DatabaseConnection,
-    ) -> ServerResult<Option<(Uuid, OffsetDateTime)>> {
+    ) -> ServerResult<Option<(ModelID, OffsetDateTime)>> {
         match sqlx::query!(
             r#" 
                 SELECT reset_token.user_id,
@@ -82,7 +83,7 @@ impl PasswordModel {
         .fetch_optional(&db.pool)
         .await
         {
-            Ok(rec) => Ok(rec.map(|rec| (rec.user_id, rec.token_generated_at))),
+            Ok(rec) => Ok(rec.map(|rec| (rec.user_id.into(), rec.token_generated_at))),
             Err(err) => {
                 tracing::error!(
                     "Database error, failed to fetch password rest token: {}",
@@ -95,7 +96,7 @@ impl PasswordModel {
 
     /// Inserts password reset token into the database
     pub async fn insert_token(
-        user_id: Uuid,
+        user_id: ModelID,
         token: TokenHash,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
@@ -112,7 +113,7 @@ impl PasswordModel {
                 DO UPDATE SET token = EXCLUDED.token,
                             token_generated_at = EXCLUDED.token_generated_at;
             "#,
-            user_id,
+            user_id.0,
             &token[..],
             OffsetDateTime::now_utc(),
         )

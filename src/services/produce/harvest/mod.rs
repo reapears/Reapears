@@ -17,4 +17,4 @@ pub use utils::{delete_harvest_photos_list, harvest_max_age};
 const HARVEST_MAX_AGE_TO_ARCHIVE: i64 = 4; // days
 
 /// Number of images allowed to be uploaded per harvest
-pub const HARVEST_MAX_IMAGE: usize = 5;
+pub const HARVEST_MAX_IMAGE: u8 = 5;

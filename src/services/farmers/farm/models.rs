@@ -3,11 +3,11 @@
 
 use serde::Serialize;
 use time::Date;
-use uuid::Uuid;
 
 use crate::{
     core::accounts::user::models::UserIndex,
     services::farmers::location::models::{Location, LocationList},
+    types::ModelID,
 };
 
 /// A `Vec` of farms
@@ -19,9 +19,12 @@ pub type FarmList = Vec<FarmIndex>;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Farm {
-    pub id: Uuid,
+    pub id: ModelID,
     pub name: String,
     pub owner: UserIndex,
+    pub logo: Option<String>,
+    pub contact_email: Option<String>,
+    pub contact_number: Option<String>,
     pub registered_on: Date,
     pub locations: Vec<Location>,
 }
@@ -31,11 +34,14 @@ impl Farm {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         name: String,
+        logo: Option<String>,
+        contact_email: Option<String>,
+        contact_number: Option<String>,
         locations: Vec<Location>,
         registered_on: Date,
-        owner_id: Uuid,
+        owner_id: ModelID,
         owner_first_name: String,
         owner_last_name: Option<String>,
         owner_photo: Option<String>,
@@ -43,6 +49,9 @@ impl Farm {
         Self {
             id,
             name,
+            logo,
+            contact_email,
+            contact_number,
             owner: UserIndex::from_row(owner_id, owner_first_name, owner_last_name, owner_photo),
             locations,
             registered_on,
@@ -54,7 +63,8 @@ impl Farm {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FarmIndex {
-    pub id: Uuid,
+    pub id: ModelID,
+    pub logo: Option<String>,
     pub name: String,
     pub owner: UserIndex,
     pub locations: LocationList,
@@ -62,12 +72,14 @@ pub struct FarmIndex {
 
 impl FarmIndex {
     /// Creates a new `FarmIndex` from the database row
+    #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn from_row(
-        id: Uuid,
+        id: ModelID,
         name: String,
+        logo: Option<String>,
         locations: LocationList,
-        owner_id: Uuid,
+        owner_id: ModelID,
         owner_first_name: String,
         owner_last_name: Option<String>,
         owner_photo: Option<String>,
@@ -75,66 +87,9 @@ impl FarmIndex {
         Self {
             id,
             name,
+            logo,
             owner: UserIndex::from_row(owner_id, owner_first_name, owner_last_name, owner_photo),
             locations,
         }
     }
 }
-
-// /// Filters for Farms
-// #[derive(Debug, Clone)]
-// pub enum FarmFilter {
-//     // farm
-//     NameEq(Vec<String>),
-//     NameNe(Vec<String>),
-//     RegisteredOnLt(Date),
-//     RegisteredOnEq(Vec<Date>),
-//     RegisteredOnNe(Vec<Date>),
-//     RegisteredOnGt(Date),
-
-//     // location
-//     PlaceNameEq(Vec<String>),
-//     PlaceNameNe(Vec<String>),
-//     RegionEq(Vec<String>),
-//     RegionNe(Vec<String>),
-//     CountryEq(Vec<String>),
-//     CountryNe(Vec<String>),
-
-//     // owner
-//     OwnerIdEq(Vec<Uuid>),
-//     OwnerIdNe(Vec<Uuid>),
-//     OwnerFirstNameEq(Vec<String>),
-//     OwnerFirstNameNe(Vec<String>),
-//     OwnerLastNameEq(Vec<String>),
-//     OwnerLastNameNe(Vec<String>),
-//     OwnerFullNameEq(Vec<String>),
-//     OwnerFullNameNe(Vec<String>),
-
-//     OwnerGenderEq(Vec<String>),
-//     OwnerGenderNe(Vec<String>),
-//     OwnerDateOfBirthLt(Date),
-//     OwnerDateOfBirthEq(Vec<Date>),
-//     OwnerDateOfBirthNe(Vec<Date>),
-//     OwnerDateOfBirthGt(Date),
-
-//     // harvest
-//     HarvestNameEq(Vec<String>),
-//     HarvestNameNe(Vec<String>),
-//     HarvestCategoryEq(Vec<String>),
-//     HarvestCategoryNe(Vec<String>),
-
-//     HarvestCountLt(i64),
-//     HarvestCountEq(Vec<i64>),
-//     HarvestCountNe(Vec<i64>),
-//     HarvestCountGt(i64),
-
-//     HarvestCreatedAtLt(Date),
-//     HarvestCreatedAtEq(Vec<Date>),
-//     HarvestCreatedAtNe(Vec<Date>),
-//     HarvestCreatedAtGt(Date),
-
-//     HarvestAvailableAtLt(Date),
-//     HarvestAvailableAtEq(Vec<Date>),
-//     HarvestAvailableAtNe(Vec<Date>),
-//     HarvestAvailableAtGt(Date),
-// }
