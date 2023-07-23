@@ -1,6 +1,11 @@
 //! Cultivar category database impl
 
-use crate::{error::ServerResult, server::state::DatabaseConnection, types::ModelID};
+use crate::{
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
+    server::state::DatabaseConnection,
+    types::ModelID,
+};
 
 use super::{
     forms::{CultivarCategoryInsertData, CultivarCategoryUpdateData},
@@ -64,6 +69,9 @@ impl CultivarCategory {
                 Ok(category.id)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_cultivar_category_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to insert cultivar-category: {}",
                     err
@@ -97,6 +105,9 @@ impl CultivarCategory {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_cultivar_category_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to update cultivar-category: {}",
                     err
@@ -124,6 +135,9 @@ impl CultivarCategory {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_cultivar_category_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to delete cultivar-category: {}",
                     err
@@ -132,4 +146,31 @@ impl CultivarCategory {
             }
         }
     }
+}
+
+/// Handle cultivar database constraints errors
+// #[allow(clippy::cognitive_complexity)]
+fn handle_cultivar_category_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if let sqlx::Error::Database(db_err) = err {
+        // Handle db unique constraints
+        if db_err.is_unique_violation() {
+            tracing::error!(
+                "Database error, cultivar category already exists. {:?}",
+                err
+            );
+            return Err(ServerError::rejection(EndpointRejection::Conflict(
+                "Cultivar category already exists.".into(),
+            )));
+        }
+    }
+
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, cultivar category not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Cultivar category not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

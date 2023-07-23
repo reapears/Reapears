@@ -44,12 +44,14 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_const_for_fn)]
 // #![deny(unreachable_pub, private_in_public)]
 // #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
 #![forbid(unsafe_code)]
 // #![cfg_attr(test, allow(clippy::float_cmp))]
 
 pub mod core;
+pub mod features;
 pub mod services;
 
 pub use crate::core::*;

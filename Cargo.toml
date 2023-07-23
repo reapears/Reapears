@@ -5,49 +5,30 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["dev"]
+dev = ["console-subscriber", "color-eyre"]
+
 [dependencies]
-# Async runtime
-tokio = { version = "1.29.1", features = ["full", "tracing"] }
-tokio-util = { version = "0.7.8", features = ["io"] }
-
-
-# Http server
-axum = { version = "0.6.18", features = [
+tokio = { version = "1.29.1", features = [
+    "rt-multi-thread",
+    "fs",
+    "time",
+    "net",
+    "io-util",
+    "sync",
+    "signal",
+    "macros",
+    "tracing",
+] }
+axum = { version = "0.6.19", features = [
     "multipart",
     "ws",
     "headers",
+    "tracing",
     "macros",
 ] }
-axum-extra = { version = "0.7.4", features = [
-    "cookie-private",
-    "query",
-    "erased-json",
-] }
-hyper = { version = "0.14.27", features = ["full"] }
-bytes = "1.4.0"
-
-# Database drive
-sqlx = { version = "0.7.0", default-features = false, features = [
-    "tls-rustls",
-    "runtime-tokio",
-    "postgres",
-    "migrate",
-    "macros",
-    "time",
-    "json",
-    "uuid",
-    "rust_decimal",
-    "bigdecimal",
-] }
-
-# Http client
-reqwest = { version = "0.11.18", features = [
-    "json",
-    "rustls-tls",
-    "trust-dns",
-] }
-
-# Middleware
+axum-extra = { version = "0.7.5", features = ["cookie-private", "query"] }
 tower = { version = "0.4.13", features = [
     "buffer",
     "limit",
@@ -55,7 +36,7 @@ tower = { version = "0.4.13", features = [
     "timeout",
     "util",
 ] }
-tower-http = { version = "0.4.1", features = [
+tower-http = { version = "0.4.3", features = [
     "catch-panic",
     "cors",
     "fs",
@@ -68,27 +49,23 @@ tower-http = { version = "0.4.1", features = [
     "trace",
     "util",
 ] }
-
-# Json and data validation
+bytes = "1.4.0"
+futures-util = "0.3.28"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-validator = { version = "0.16", features = ["derive", "phone"] }
-minijinja = "1.0.3"
 
-# Cryptograpy
-password-auth = "0.3.0"
-blake3 = "1.4.1"
-rand = "0.8.5"
-secrecy = "0.8.0"
-
-# Tracing
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
-tracing-appender = "0.2.2"
-console-subscriber = "0.1.9"
-color-eyre = "0.6.2"
-
-# Emails
+# 
+sqlx = { version = "0.7.1", default-features = false, features = [
+    "tls-rustls",
+    "runtime-tokio",
+    "postgres",
+    "migrate",
+    "macros",
+    "time",
+    "json",
+    "uuid",
+    "rust_decimal",
+] }
 lettre = { version = "0.10.4", default-features = false, features = [
     "builder",
     "hostname",
@@ -97,30 +74,44 @@ lettre = { version = "0.10.4", default-features = false, features = [
     "hostname",
     "tokio1-rustls-tls",
 ] }
+minijinja = "1.0.5"
+image = { version = "0.24.6", features = ["webp-encoder"] }
 
-# Cli and Confing
-clap = { version = "4.3.11", features = ["derive"] }
+# 
+password-auth = "0.3.0"
+blake3 = "1.4.1"
+rand = "0.8.5"
+
+# 
+itertools = "0.11.0"
+geo = { version = "0.26.0", features = ["use-serde"] }
+uuid = { version = "1.4.1", features = ["v7", "fast-rng", "serde"] }
+time = { version = "0.3.23", features = ["serde-human-readable"] }
+phonenumber = "0.3.2"
+rust_decimal = "1.30.0"
+
+# 
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+# opentelemetry = "0.19.0"
+# tracing-opentelemetry = "0.19.0"
+# opentelemetry-jaeger = "0.18.0"
+console-subscriber = { version = "0.1.9", optional = true }
+color-eyre = { version = "0.6.2", optional = true }
+
+# 
+clap = { version = "4.3.19", features = ["derive"] }
 dotenvy = "0.15.7"
 
-# Mics
-camino = "1.1.4"
-geo = { version = "0.25.1", features = ["use-serde"] }
-image = { version = "0.24.6", features = ["webp-encoder"] }
-itertools = "0.11.0"
-time = { version = "0.3.22", features = ["serde", "serde-human-readable"] }
-uuid = { version = "1.4.0", features = [
-    "v4",
-    "v7",
-    "fast-rng",
-    "macro-diagnostics",
-    "serde",
-] }
-rust_decimal = { version = "1.30.0", features = [
-    "db-postgres",
-    "serde-with-str",
-] }
+
+# [dev-dependencies]
+# insta = "1.31.0"
 
 
 # Profiles Section
+[profile.release]
+lto = "fat"
+codegen-units = 1
+
 [profile.dev.package.sqlx-macros]
 opt-level = 3

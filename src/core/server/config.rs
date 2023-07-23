@@ -1,10 +1,7 @@
 //! Server configuration
 #![allow(missing_debug_implementations)]
 
-use std::{
-    env,
-    net::{IpAddr, SocketAddr},
-};
+use std::net::{IpAddr, SocketAddr};
 
 use axum_extra::extract::cookie::Key;
 use clap::Parser;
@@ -32,7 +29,7 @@ impl Config {
         let config = ConfigCli::parse();
         let database_url = config
             .database_url
-            .unwrap_or_else(|| env::var("DATABASE_URL").expect("DATABASE_URL is not set."));
+            .unwrap_or_else(|| std::env::var("DATABASE_URL").expect("DATABASE_URL is not set."));
         Self {
             server_addr: config
                 .server_addr

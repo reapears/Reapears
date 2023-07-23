@@ -22,6 +22,13 @@ pub mod handlers;
 #[derive(Debug, Clone, Copy)]
 pub struct ApiAuthentication;
 
+/// Endpoints that are not protected with an API key;
+const UNAUTHENTICATED_ENDPOINTS: [&str; 3] = [
+    "/account/confirm",
+    "/health-check",
+    "/account/reset-password",
+];
+
 #[async_trait]
 impl FromRequestParts<ServerState> for ApiAuthentication {
     type Rejection = EndpointRejection;
@@ -30,13 +37,17 @@ impl FromRequestParts<ServerState> for ApiAuthentication {
         parts: &mut Parts,
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
-        // Extract key from url query
+        if UNAUTHENTICATED_ENDPOINTS.contains(&parts.uri.path()) {
+            return Ok(Self);
+        }
+        // Extract key from url query.
         let Ok(Query(key)) = Query::<ApiKey>::from_request_parts(parts, state).await else{
+            tracing::debug!("Request rejected no api key found");
             return Err(EndpointRejection::unauthorized());
         };
-
-        // Verify api key
+        // Verify api key.
         if !api_token_valid(hash_token(key.api_key.as_bytes()), state.database.clone()).await? {
+            tracing::debug!("Request rejected invalid api key.");
             return Err(EndpointRejection::unauthorized());
         }
 
@@ -44,7 +55,7 @@ impl FromRequestParts<ServerState> for ApiAuthentication {
     }
 }
 
-// Helper struct for extracting a key from the url
+// Helper struct for extracting a key from the url.
 #[derive(Deserialize)]
 struct ApiKey {
     api_key: String,

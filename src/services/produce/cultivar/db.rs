@@ -1,9 +1,10 @@
 //! Cultivar database impl
 
-use camino::Utf8PathBuf;
+use std::path::PathBuf;
 
 use crate::{
-    error::ServerResult,
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
     files,
     server::state::DatabaseConnection,
     services::produce::harvest::models::HarvestIndex,
@@ -87,6 +88,7 @@ impl Cultivar {
                     harvest.images AS harvest_images,
                     farm.name AS "farm_name?",
                     location_.place_name AS "location_place_name?",
+                    location_.coords AS location_coords,
                     region.name AS "location_region?",
                     country.name AS "location_country?"
                 FROM services.cultivars cultivar
@@ -134,10 +136,13 @@ impl Cultivar {
                             rec.harvest_available_at.unwrap(),
                             rec.harvest_images,
                             rec.cultivar_name,
+                            rec.cultivar_image,
                             rec.location_place_name.unwrap(),
                             rec.location_region,
                             rec.location_country.unwrap(),
+                            rec.location_coords,
                             rec.farm_name.unwrap(),
+                            0.into(), // boost amount not important
                         )
                     })
                     .collect();
@@ -185,6 +190,9 @@ impl Cultivar {
                 Ok(cultivar.id)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_cultivar_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert cultivar: {}", err);
                 Err(err.into())
             }
@@ -206,7 +214,7 @@ impl Cultivar {
                 WHERE cultivar.id = $3
            "#,
             cultivar.name,
-            cultivar.category_id.map(|id| id.0),
+            cultivar.category_id.0,
             id.0
         )
         .execute(&db.pool)
@@ -217,6 +225,9 @@ impl Cultivar {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_cultivar_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update cultivar: {}", err);
                 Err(err.into())
             }
@@ -248,6 +259,9 @@ impl Cultivar {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_cultivar_database_error(&err)?;
+
                 tracing::error!("Database error, failed to delete cultivar: {}", err);
                 Err(err.into())
             }
@@ -260,7 +274,7 @@ impl Cultivar {
     #[tracing::instrument(name = "Database::cultivar-insert-image", skip(db))]
     pub async fn insert_photo(
         id: ModelID,
-        paths: Vec<Utf8PathBuf>,
+        paths: Vec<PathBuf>,
         db: DatabaseConnection,
     ) -> ServerResult<(String, Option<String>)> {
         let path = files::get_jpg_path(paths)?;
@@ -287,6 +301,9 @@ impl Cultivar {
                 Ok((path, rec.old_image))
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_cultivar_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to insert cultivar image-path: {}",
                     err
@@ -327,6 +344,9 @@ impl Cultivar {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_cultivar_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to delete cultivar image-path: {}",
                     err
@@ -365,4 +385,35 @@ impl Cultivar {
             }
         }
     }
+}
+
+/// Handle cultivar database constraints errors
+// #[allow(clippy::cognitive_complexity)]
+fn handle_cultivar_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if let sqlx::Error::Database(db_err) = err {
+        // Handle db unique constraints
+        if db_err.is_unique_violation() {
+            tracing::error!("Database error, cultivar already exists. {:?}", err);
+            return Err(ServerError::rejection(EndpointRejection::Conflict(
+                "Cultivar already exists.".into(),
+            )));
+        }
+        // Handle db foreign key constraints
+        if db_err.is_foreign_key_violation() {
+            tracing::error!("Database error, cultivar category not found. {:?}", err);
+            return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                "Cultivar category not found.".into(),
+            )));
+        }
+    }
+
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, cultivar not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Cultivar not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

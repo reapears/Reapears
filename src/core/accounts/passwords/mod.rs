@@ -31,7 +31,7 @@ pub async fn check_password(
     user_id: ModelID,
     password: String,
     db: DatabaseConnection,
-) -> ServerResult<bool> {
+) -> ServerResult<()> {
     let Some(phc_string) = PasswordModel::find(user_id, db).await? else{
         tracing::error!("Database error, user could not be found");
         return Err(ServerError::new("User could not be found"));

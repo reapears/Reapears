@@ -3,6 +3,7 @@
 use axum::http::header;
 
 mod config;
+mod maintenance;
 mod routers;
 mod serve;
 pub mod state;

@@ -6,20 +6,21 @@ use axum::{
     http::Request,
 };
 use serde::Deserialize;
-use validator::Validate;
 
 use crate::{
-    endpoint::EndpointRejection, server::state::ServerState,
-    services::farmers::location::forms::validate_country_id, types::ModelID,
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
+    server::state::ServerState,
+    types::ModelID,
 };
 
 /// Region create form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RegionForm {
-    #[validate(length(min = 1, max = 32))]
     pub name: String,
-
-    #[validate(length(min = 1, max = 64, message = "Invalid country id"))]
     pub country_id: String,
 }
 
@@ -41,37 +42,6 @@ impl From<RegionForm> for RegionInsertData {
     }
 }
 
-#[async_trait]
-impl<B> FromRequest<ServerState, B> for RegionForm
-where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
-{
-    type Rejection = EndpointRejection;
-
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
-
-        match input.validate() {
-            Ok(()) => {
-                // Validate country id exists
-                let Ok(country_id) = ModelID::try_from(input.country_id.as_str()) else{
-                    return Err(EndpointRejection::BadRequest("Country not found".into()));
-                };
-                validate_country_id(country_id, state.database.clone()).await?;
-
-                Ok(input)
-            }
-            Err(err) => {
-                tracing::error!("Validation error: {}", err);
-                Err(EndpointRejection::BadRequest(err.to_string().into()))
-            }
-        }
-    }
-}
-
-// ===== Region Update form impl =====
-
 /// Region update form cleaned data
 #[derive(Debug, Clone)]
 pub struct RegionUpdateData {
@@ -85,5 +55,44 @@ impl From<RegionForm> for RegionUpdateData {
             name: Some(form.name),
             country_id: Some(ModelID::from_str_unchecked(&form.country_id)),
         }
+    }
+}
+
+impl RegionForm {
+    /// Validates region form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.name
+            .validate_len(0, 32, "Country region name must be at most 32 characters")?;
+
+        self.country_id.validate_id("Invalid country id")?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.name = self.name.clean().to_titlecase();
+    }
+}
+
+#[async_trait]
+impl<B> FromRequest<ServerState, B> for RegionForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        // Extract data
+        let Json(mut region) = Json::<Self>::from_request(req, state).await?;
+
+        // Validate form fields
+        region.validate()?;
+
+        Ok(region)
     }
 }

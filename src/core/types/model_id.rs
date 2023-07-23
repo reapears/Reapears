@@ -68,6 +68,18 @@ impl From<Uuid> for ModelID {
     }
 }
 
+impl std::cmp::PartialEq<Uuid> for ModelID {
+    fn eq(&self, other: &Uuid) -> bool {
+        self.0 == *other
+    }
+}
+
+impl std::cmp::PartialEq<ModelID> for Uuid {
+    fn eq(&self, other: &ModelID) -> bool {
+        *self == other.0
+    }
+}
+
 #[async_trait]
 impl<S> FromRequestParts<S> for ModelID
 where

@@ -1,10 +1,14 @@
 //! Farm database impl
 
+use std::path::PathBuf;
+
 use itertools::Itertools;
 use time::OffsetDateTime;
 
 use crate::{
+    endpoint::EndpointRejection,
     error::{ServerError, ServerResult},
+    files,
     server::state::DatabaseConnection,
     services::{
         farmers::location::models::{Location, LocationIndex},
@@ -218,10 +222,13 @@ impl Farm {
                                 rec.harvest_available_at.unwrap(),
                                 rec.harvest_images,
                                 rec.cultivar_name.unwrap(),
+                                rec.cultivar_image,
                                 rec.location_place_name,
                                 rec.location_region,
                                 rec.location_country,
+                                rec.location_coords,
                                 rec.farm_name,
+                                0.into(), // boost amount not important
                             )
                         })
                         .collect();
@@ -273,14 +280,20 @@ impl Farm {
                     id,
                     owner_id,
                     name,
+                    contact_number,
+                    contact_email,
+                    founded_at,
                     registered_on,
                     deleted
                 )
-                VALUES($1, $2, $3, $4, false);
+                VALUES($1, $2, $3, $4, $5, $6, $7, false);
             "#,
             farm.id.0,
             farm.owner_id.0,
             farm.name,
+            farm.contact_number,
+            farm.contact_email,
+            farm.founded_at,
             farm.registered_on,
         )
         .execute(&mut *tx)
@@ -303,6 +316,9 @@ impl Farm {
             }
 
             Err(err) => {
+                // Handle database constraint error
+                handle_farm_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert farm: {}", err);
                 Err(err.into())
             }
@@ -319,10 +335,17 @@ impl Farm {
         match sqlx::query!(
             r#"
                 UPDATE services.farms farm
-                SET name = COALESCE($1, farm.name)
-                WHERE id = $2;
+                SET name = COALESCE($1, farm.name),
+                    contact_number = $2,
+                    contact_email = $3,
+                    founded_at = $4
+
+                WHERE id = $5;
            "#,
             farm.name,
+            farm.contact_number,
+            farm.contact_email,
+            farm.founded_at,
             id.0,
         )
         .execute(&db.pool)
@@ -333,7 +356,54 @@ impl Farm {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_farm_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update farm: {}", err);
+                Err(err.into())
+            }
+        }
+    }
+
+    /// Insert farm logo path into the database
+    #[tracing::instrument(skip(db), name = "Insert farm logo")]
+    pub async fn insert_or_delete_logo(
+        id: ModelID,
+        paths: Option<Vec<PathBuf>>,
+        db: DatabaseConnection,
+    ) -> ServerResult<(Option<String>, Option<String>)> {
+        let path = match paths {
+            Some(paths) => Some(files::get_jpg_path(paths)?),
+            None => None,
+        };
+
+        match sqlx::query!(
+            r#"
+                 UPDATE services.farms farm
+                 SET logo = $1
+                 WHERE farm.id = $2
+ 
+                 RETURNING (
+                     SELECT farm.logo
+                     FROM services.farms farm
+                     WHERE farm.id = $2
+                 ) AS old_logo
+            "#,
+            path,
+            id.0
+        )
+        .fetch_one(&db.pool)
+        .await
+        {
+            Ok(rec) => {
+                tracing::debug!("Farm logo inserted successfully");
+                Ok((path, rec.old_logo))
+            }
+            Err(err) => {
+                // Handle database constraint error
+                handle_farm_database_error(&err)?;
+
+                tracing::error!("Database error, failed to set farm logo: {}", err);
                 Err(err.into())
             }
         }
@@ -433,4 +503,28 @@ impl Farm {
             }
         }
     }
+}
+
+/// Handle farms database constraints errors
+#[allow(clippy::cognitive_complexity)]
+pub fn handle_farm_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if let sqlx::Error::Database(db_err) = err {
+        // Handle db foreign key constraints
+        if db_err.is_foreign_key_violation() {
+            tracing::error!("Database error, user not found. {:?}", err);
+            return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                "User not found.".into(),
+            )));
+        }
+    }
+
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, farm not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Farm not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

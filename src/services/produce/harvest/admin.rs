@@ -57,6 +57,7 @@ impl HarvestAdmin {
         place_name: String,
         region: Option<String>,
         country: String,
+        coords: Option<serde_json::Value>,
     ) -> Self {
         Self {
             id,
@@ -78,7 +79,7 @@ impl HarvestAdmin {
             updated_at,
             finished_at,
             created_at,
-            location: HarvestLocation::from_row(location_id, place_name, region, country),
+            location: HarvestLocation::from_row(location_id, place_name, region, country, coords),
         }
     }
 }

@@ -22,6 +22,7 @@ use crate::{
         },
     },
     auth::sessions::handlers::{login, logout},
+    features::harvest_subscription::handlers::user_harvest_subscriptions,
     // files::IMAGE_MAX_SIZE,
     server::state::ServerState,
 };
@@ -71,5 +72,9 @@ pub fn routers() -> Router<ServerState> {
         )
         .route("/account/settings/change-password", post(password_change))
         .route("/account/settings/verify-password", post(password_verify))
-    // .route("/account/settings/phones", put(phone_update))
+        // .route("/account/settings/phones", put(phone_update))
+        .route(
+            "/account/harvests-subscriptions",
+            get(user_harvest_subscriptions),
+        )
 }

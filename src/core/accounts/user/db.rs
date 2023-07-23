@@ -7,7 +7,8 @@ use crate::{
         emails::EmailModel,
         user_profile::{delete_user_photo, models::UserProfile},
     },
-    error::ServerResult,
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
     server::state::DatabaseConnection,
     services::produce::harvest::delete_harvest_photos_list,
     types::ModelID,
@@ -119,6 +120,9 @@ impl User {
                 Ok(user_id)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_user_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert new user: {}", err);
                 Err(err.into())
             }
@@ -173,6 +177,9 @@ impl User {
         {
             Ok(_result) => Ok(()),
             Err(err) => {
+                // Handle database constraint error
+                handle_user_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to set user is superuser={is_superuser}: {}",
                     err
@@ -203,6 +210,9 @@ impl User {
         {
             Ok(_result) => Ok(()),
             Err(err) => {
+                // Handle database constraint error
+                handle_user_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to set user is superuser={is_staff}: {}",
                     err
@@ -241,6 +251,9 @@ impl User {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_user_database_error(&err)?;
+
                 tracing::error!("Database error, Failed to lock an account: {}", err);
                 Err(err.into())
             }
@@ -268,6 +281,9 @@ impl User {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_user_database_error(&err)?;
+
                 tracing::error!("Database error, Failed to unlock an account: {}", err);
                 Err(err.into())
             }
@@ -332,9 +348,25 @@ impl User {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_user_database_error(&err)?;
+
                 tracing::error!("Database error, failed to delete unverified user: {}", err);
                 Err(err.into())
             }
         }
     }
+}
+
+/// Handle user database constraints errors
+#[allow(clippy::cognitive_complexity)]
+pub fn handle_user_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, user not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "User not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

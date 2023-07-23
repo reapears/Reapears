@@ -40,11 +40,11 @@ pub async fn region_create(
 #[tracing::instrument(skip(db, user, form))]
 pub async fn region_update(
     #[allow(unused_variables)] user: AdminUser,
-    country_id: ModelID,
+    region_id: ModelID,
     State(db): State<DatabaseConnection>,
     form: RegionForm,
 ) -> EndpointResult<StatusCode> {
-    Region::update(country_id, form.into(), db)
+    Region::update(region_id, form.into(), db)
         .await
         .map_or_else(
             |_err| Err(EndpointRejection::internal_server_error()),
@@ -56,10 +56,10 @@ pub async fn region_update(
 #[tracing::instrument(skip(db, user))]
 pub async fn region_delete(
     #[allow(unused_variables)] user: AdminUser,
-    country_id: ModelID,
+    region_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    Region::delete(country_id, db).await.map_or_else(
+    Region::delete(region_id, db).await.map_or_else(
         |_err| Err(EndpointRejection::internal_server_error()),
         |_| Ok(StatusCode::NO_CONTENT),
     )

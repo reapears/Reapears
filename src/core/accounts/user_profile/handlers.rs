@@ -84,7 +84,7 @@ pub async fn user_photo_upload(
         Ok(Json(new_photo))
     } else {
         Err(EndpointRejection::BadRequest(
-            "User profile photo is not received".into(),
+            "User profile photo not received".into(),
         ))
     }
 }

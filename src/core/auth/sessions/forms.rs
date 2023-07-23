@@ -7,12 +7,14 @@ use axum::{
 };
 use serde::Deserialize;
 use time::OffsetDateTime;
-use validator::Validate;
 
 use crate::{
-    accounts::user::models::User,
-    auth::{verify_password, Token, TokenHash},
-    endpoint::EndpointRejection,
+    accounts::{user::models::User, AccountDelete},
+    auth::{verify_password, Token, TokenHash, INVALID_CREDENTIALS},
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
     server::state::ServerState,
     types::ModelID,
 };
@@ -20,20 +22,43 @@ use crate::{
 use super::models::Session;
 
 /// User login form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct LoginForm {
-    #[validate(length(min = 1, max = 255, message = "Invalid email address"))]
     pub email: String,
-
-    #[validate(length(min = 1, max = 64, message = "Password too long"))]
     pub password: String,
-
     /// User id is set if user login completed successfully
     #[serde(skip_deserializing)]
     pub user_id: Option<ModelID>,
 }
 
+/// Session cleaned data
+#[derive(Debug, Clone)]
+pub struct SessionInsert {
+    pub id: ModelID,
+    pub user_id: ModelID,
+    pub user_agent: String,
+    pub token: TokenHash,
+    pub created_at: OffsetDateTime,
+    pub last_used_at: OffsetDateTime,
+}
+
 impl LoginForm {
+    /// Validates email form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.email.validate_len(1, 255, INVALID_CREDENTIALS)?;
+        self.password.validate_len(0, 25, INVALID_CREDENTIALS)?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.email = self.email.clean().to_ascii_lowercase();
+    }
+
     /// Creates new `SessionInsert` data and returns (`SessionInsert`, token:String)
     ///
     /// # Panics
@@ -66,17 +91,6 @@ impl LoginForm {
     }
 }
 
-/// Session cleaned data
-#[derive(Debug, Clone)]
-pub struct SessionInsert {
-    pub id: ModelID,
-    pub user_id: ModelID,
-    pub user_agent: String,
-    pub token: TokenHash,
-    pub created_at: OffsetDateTime,
-    pub last_used_at: OffsetDateTime,
-}
-
 #[async_trait]
 impl<B> FromRequest<ServerState, B> for LoginForm
 where
@@ -86,11 +100,13 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        const INVALID_CREDENTIALS: &str = "The username or password you have entered is invalid.";
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        let Json(mut login) = Json::<Self>::from_request(req, state).await?;
+
+        // Validate form fields
+        login.validate()?;
 
         let db = state.database.clone();
-        let email = input.email.clone();
+        let email = login.email.clone();
 
         let Some(user) = Session::find_user_by_email(email.clone(), db.clone()).await? else{
             return Err(EndpointRejection::BadRequest(INVALID_CREDENTIALS.into()));
@@ -99,7 +115,7 @@ where
         if !user.email_verified {
             tracing::info!("Login error, email not verified.");
             // Delete user account is not verified they must restart signup process
-            User::delete_unverified(user.id, db).await?;
+            User::delete_unverified(user.id, db.clone()).await?;
             return Err(EndpointRejection::BadRequest(
                 "Sorry!, we could not find your account.".into(),
             ));
@@ -113,15 +129,19 @@ where
         }
 
         // Authenticate the user; check the password in valid.
-        if verify_password(&input.password, user.phc_string).await? {
-            // NB! don't forget the set the user id
-            Ok(input.set_user_id(user.id))
-        } else {
-            tracing::info!("Login error, password incorrect.");
-            Err(EndpointRejection::BadRequest(INVALID_CREDENTIALS.into()))
+        verify_password(&login.password, user.phc_string).await?;
+
+        // Lift account delete request
+        if user.requested_account_delete {
+            AccountDelete::delete_request(user.id, db).await?;
         }
+
+        // NB! don't forget the set the user id
+        Ok(login.set_user_id(user.id))
     }
 }
+
+// ===== Session Update impls =====
 
 /// Session update cleaned data
 #[derive(Debug, Clone)]
@@ -140,6 +160,8 @@ impl SessionUpdate {
     }
 }
 
+// ===== Login RedirectTo impls =====
+
 /// Login redirect after successful login
 #[derive(Clone, Debug, Deserialize)]
 pub struct SuccessRedirect {
@@ -149,7 +171,7 @@ pub struct SuccessRedirect {
 impl Default for SuccessRedirect {
     fn default() -> Self {
         Self {
-            return_to: String::from("/harvests"),
+            return_to: String::from("/"),
         }
     }
 }

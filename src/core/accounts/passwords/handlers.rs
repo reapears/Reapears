@@ -32,12 +32,9 @@ pub async fn password_verify(
     State(db): State<DatabaseConnection>,
     form: PasswordVerifyForm,
 ) -> EndpointResult<(PrivateCookieJar, StatusCode)> {
-    if check_password(current_user.id, form.password, db).await? {
-        let cookie_jar = add_password_verified_cookie(cookie_jar);
-        Ok((cookie_jar, StatusCode::OK))
-    } else {
-        Err(EndpointRejection::BadRequest("".into()))
-    }
+    check_password(current_user.id, form.password, db).await?;
+    let cookie_jar = add_password_verified_cookie(cookie_jar);
+    Ok((cookie_jar, StatusCode::OK))
 }
 
 /// Handles the `POST /account/settings/change-password` route.

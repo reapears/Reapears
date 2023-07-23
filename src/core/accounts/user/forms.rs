@@ -7,35 +7,26 @@ use axum::{
 };
 use serde::Deserialize;
 use time::{Date, OffsetDateTime};
-use validator::Validate;
 
 use crate::{
     accounts::emails::{forms::EmailInsertData, EmailModel},
     auth::{hash_password, TokenHash},
-    endpoint::EndpointRejection,
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
     error::ServerResult,
     server::state::ServerState,
     types::ModelID,
 };
 
 /// User sign-up form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SignUpForm {
-    #[validate(length(min = 1, max = 16))]
     pub first_name: String,
-
-    #[validate(length(max = 16))]
     pub last_name: Option<String>,
-
-    #[validate(email)]
     pub email: String,
-
-    #[validate(length(
-        min = 7,
-        max = 14,
-        message = "Password length must be at least 7 characters long and 14 characters max"
-    ))]
     pub password: String,
 }
 
@@ -54,6 +45,36 @@ pub struct SignUpData {
 }
 
 impl SignUpForm {
+    /// Validates sign-up form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.first_name
+            .validate_len(3, 24, "first name must be at most 24 characters")?;
+
+        if let Some(ref last_name) = self.last_name {
+            last_name.validate_len(0, 24, "last name must be at most 24 characters")?;
+        }
+
+        self.email.validate_email()?;
+
+        self.password.validate_len(
+            6,
+            24,
+            "password must be as least 6 character and at most 24 characters long",
+        )?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.first_name = self.first_name.clean();
+        self.last_name = self.last_name.as_ref().map(|last_name| last_name.clean());
+        self.email = self.email.clean().to_ascii_lowercase();
+    }
+
     /// Convert `Self` into `SignUpData`
     ///
     /// # Errors
@@ -84,33 +105,35 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
-        match input.validate() {
-            Ok(()) => {
-                let db = state.database.clone();
-                let email = input.email.clone();
-                if EmailModel::exists_and_verified(email.clone(), db.clone()).await? {
-                    // A redirect to login perhaps
-                    return Err(EndpointRejection::BadRequest(
-                        "Account exists already!".into(),
-                    ));
-                }
+        // Extract data
+        let Json(mut signup) = Json::<Self>::from_request(req, state).await?;
 
-                // If the user try to sign up again with the unverified email
-                // Delete the existing record and continue
-                if EmailModel::exists_and_unverified(email.clone(), db.clone()).await? {
-                    EmailModel::delete_unverified(email, db).await?;
-                }
+        // Validate form fields
+        signup.validate()?;
 
-                Ok(input)
-            }
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
+        let db = state.database.clone();
+        let email = signup.email.clone();
+        if EmailModel::exists_and_verified(email.clone(), db.clone()).await? {
+            // A redirect to login perhaps
+            return Err(EndpointRejection::BadRequest(
+                "Account exists already!".into(),
+            ));
         }
+
+        // If the user try to sign up again with the unverified email
+        // Delete the existing record and continue
+        if EmailModel::exists_and_unverified(email.clone(), db.clone()).await? {
+            EmailModel::delete_unverified(email, db).await?;
+        }
+
+        Ok(signup)
     }
 }
 
+// ===== Account Lock impls =====
+
 /// User account lock form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountLockForm {
     pub user_id: ModelID,
@@ -136,6 +159,27 @@ impl From<AccountLockForm> for AccountLockData {
     }
 }
 
+impl AccountLockForm {
+    /// Validates account lock form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.account_locked_reason.validate_len(
+            3,
+            512,
+            "Account locked reason must be at most 512 characters",
+        )?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.account_locked_reason = self.account_locked_reason.clean();
+    }
+}
+
 #[async_trait]
 impl<B> FromRequest<ServerState, B> for AccountLockForm
 where
@@ -145,17 +189,17 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        // Extract data
+        let Json(mut account_lock) = Json::<Self>::from_request(req, state).await?;
 
-        match input.validate() {
-            Ok(()) => {
-                helpers::validate_user_exists(input.user_id, state.database.clone()).await?;
-                Ok(input)
-            }
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Validate form fields
+        account_lock.validate()?;
+
+        Ok(account_lock)
     }
 }
+
+// ===== Account Unlock impls =====
 
 /// User account unlock form
 #[derive(Debug, Clone, Deserialize)]
@@ -173,49 +217,9 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
-        helpers::validate_user_exists(input.user_id, state.database.clone()).await?;
-        Ok(input)
-    }
-}
+        // Extract data
+        let Json(account_unlock) = Json::<Self>::from_request(req, state).await?;
 
-mod helpers {
-
-    use crate::{
-        endpoint::{EndpointRejection, EndpointResult},
-        server::state::DatabaseConnection,
-        types::ModelID,
-    };
-
-    /// Validate `user_id` exists
-    pub async fn validate_user_exists(id: ModelID, db: DatabaseConnection) -> EndpointResult<()> {
-        match sqlx::query!(
-            r#"
-                SELECT EXISTS(
-                    SELECT 1 FROM accounts.users user_
-                    WHERE user_.id = $1
-                ) AS "exists!"
-            "#,
-            id.0,
-        )
-        .fetch_one(&db.pool)
-        .await
-        {
-            // Returns ok if user id exists
-            Ok(row) => {
-                if row.exists {
-                    Ok(())
-                } else {
-                    tracing::error!("User id: '{}' does not exists.", id);
-                    Err(EndpointRejection::BadRequest(
-                        "Sorry! Account not found.".into(),
-                    ))
-                }
-            }
-            Err(err) => {
-                tracing::error!("Database error: {}", err);
-                Err(EndpointRejection::internal_server_error())
-            }
-        }
+        Ok(account_unlock)
     }
 }

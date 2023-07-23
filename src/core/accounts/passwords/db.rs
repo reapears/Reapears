@@ -3,7 +3,8 @@
 use time::OffsetDateTime;
 
 use crate::{
-    auth::TokenHash, error::ServerResult, server::state::DatabaseConnection, types::ModelID,
+    accounts::user::db::handle_user_database_error, auth::TokenHash, error::ServerResult,
+    server::state::DatabaseConnection, types::ModelID,
 };
 
 use super::PasswordModel;
@@ -58,6 +59,9 @@ impl PasswordModel {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_user_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update user password: {}", err);
                 Err(err.into())
             }

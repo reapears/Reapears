@@ -1,6 +1,11 @@
 //! Location country database impl
 
-use crate::{error::ServerResult, server::state::DatabaseConnection, types::ModelID};
+use crate::{
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
+    server::state::DatabaseConnection,
+    types::ModelID,
+};
 
 use super::{
     forms::{CountryInsertData, CountryUpdateData},
@@ -64,6 +69,9 @@ impl Country {
                 Ok(country.id)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_country_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert location country: {}", err);
                 Err(err.into())
             }
@@ -94,6 +102,9 @@ impl Country {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_country_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update location country: {}", err);
                 Err(err.into())
             }
@@ -118,9 +129,36 @@ impl Country {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_country_database_error(&err)?;
+
                 tracing::error!("Database error, failed to delete location country: {}", err);
                 Err(err.into())
             }
         }
     }
+}
+
+/// Handle countries database constraints errors
+#[allow(clippy::cognitive_complexity)]
+fn handle_country_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if let sqlx::Error::Database(db_err) = err {
+        // Handle db unique constraints
+        if db_err.is_unique_violation() {
+            tracing::error!("Database error, Country already exists. {:?}", err);
+            return Err(ServerError::rejection(EndpointRejection::Conflict(
+                "Country already exists.".into(),
+            )));
+        }
+    }
+
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, country not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Country not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

@@ -7,18 +7,19 @@ use axum::{
 };
 use serde::Deserialize;
 
-use validator::Validate;
-
-use crate::{endpoint::EndpointRejection, server::state::ServerState};
+use crate::{
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
+    server::state::ServerState,
+};
 
 /// User profile update form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserProfileUpdateForm {
-    #[validate(length(min = 1, max = 512))]
     pub about: Option<String>,
-
-    #[validate(length(min = 1, max = 128, message = "location too long"))]
     pub lives_at: Option<String>,
 }
 
@@ -38,6 +39,30 @@ impl From<UserProfileUpdateForm> for UserProfileUpdateData {
     }
 }
 
+impl UserProfileUpdateForm {
+    /// Validates profile form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        if let Some(ref about) = self.about {
+            about.validate_len(0, 512, "About must be at most  512 characters")?;
+        }
+
+        if let Some(ref lives_at) = self.lives_at {
+            lives_at.validate_len(0, 128, "Lives at must be at most  128 characters")?;
+        }
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.about = self.about.as_ref().map(|about| about.clean());
+        self.lives_at = self.lives_at.as_ref().map(|lives_at| lives_at.clean());
+    }
+}
+
 #[async_trait]
 impl<B> FromRequest<ServerState, B> for UserProfileUpdateForm
 where
@@ -47,10 +72,12 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Extract data
+        let Json(mut profile) = Json::<Self>::from_request(req, state).await?;
+
+        // Validate form fields
+        profile.validate()?;
+
+        Ok(profile)
     }
 }

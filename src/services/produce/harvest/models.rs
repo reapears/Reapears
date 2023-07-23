@@ -1,12 +1,14 @@
 //! Harvest model impls
-#![allow(dead_code, clippy::missing_const_for_fn)]
+#![allow(clippy::missing_const_for_fn)]
 
+use geo::Point;
 use serde::Serialize;
 use time::{Date, OffsetDateTime};
 
 use crate::{
     core::types::{price::Price, ModelID},
     core::{accounts::user::models::UserIndex, types::ModelIdentifier},
+    services::farmers::location,
 };
 
 /// A `Vec` of harvests
@@ -26,6 +28,7 @@ pub struct Harvest {
     pub price: Price,
     pub r#type: Option<String>,
     pub description: Option<String>,
+    pub cultivar_image: Option<String>,
     pub images: Option<Vec<String>>,
     pub available_at: Date,
     pub created_at: Date,
@@ -46,10 +49,12 @@ impl Harvest {
         created_at: OffsetDateTime,
         cultivar_id: ModelID,
         cultivar_name: String,
+        cultivar_image: Option<String>,
         location_id: ModelID,
         place_name: String,
         region: Option<String>,
         country: String,
+        coords: Option<serde_json::Value>,
         farm_id: ModelID,
         farm_name: String,
         farm_owner_id: ModelID,
@@ -71,10 +76,11 @@ impl Harvest {
             price: Price::from_row(price),
             r#type,
             description,
+            cultivar_image,
             images,
             available_at,
             created_at: created_at.date(),
-            location: HarvestLocation::from_row(location_id, place_name, region, country),
+            location: HarvestLocation::from_row(location_id, place_name, region, country, coords),
         }
     }
 }
@@ -88,10 +94,17 @@ pub struct HarvestIndex {
     pub farm: String,
     pub price: Price,
     pub images: Option<Vec<String>>,
+    pub cultivar_image: Option<String>,
     pub available_at: Date,
     pub place_name: String,
     pub region: Option<String>,
     pub country: String,
+    pub coords: Option<Point>,
+
+    // This field is for internal use only; it is not sent to the users.
+    // it is used for ordering
+    #[serde(skip_serializing)]
+    pub boost_amount: rust_decimal::Decimal,
 }
 
 impl HarvestIndex {
@@ -104,10 +117,13 @@ impl HarvestIndex {
         available_at: Date,
         images: Option<Vec<String>>,
         cultivar_name: String,
+        cultivar_image: Option<String>,
         place_name: String,
         region: Option<String>,
         country: String,
+        coords: Option<serde_json::Value>,
         farm: String,
+        boost_amount: rust_decimal::Decimal,
     ) -> Self {
         Self {
             id,
@@ -115,10 +131,13 @@ impl HarvestIndex {
             farm,
             price: Price::from_row(price),
             images,
+            cultivar_image,
             available_at,
             country,
             region,
             place_name,
+            coords: location::try_into_point(coords),
+            boost_amount,
         }
     }
 }
@@ -131,6 +150,7 @@ pub struct HarvestLocation {
     pub place_name: String,
     pub region: Option<String>,
     pub country: String,
+    pub coords: Option<Point>,
 }
 
 impl HarvestLocation {
@@ -141,12 +161,14 @@ impl HarvestLocation {
         place_name: String,
         region: Option<String>,
         country: String,
+        coords: Option<serde_json::Value>,
     ) -> Self {
         Self {
             id,
             place_name,
             region,
             country,
+            coords: location::try_into_point(coords),
         }
     }
 }

@@ -1,14 +1,16 @@
 //! Farm http handlers impls
 
 use axum::{
-    extract::{Json, Query, State},
+    extract::{Json, Multipart, Query, State},
     http::StatusCode,
 };
 
 use crate::{
     auth::{AdminUser, CurrentUser, FarmerUser},
     endpoint::{EndpointRejection, EndpointResult},
+    files,
     server::state::DatabaseConnection,
+    settings::FARM_LOGO_UPLOAD_DIR,
     types::ModelID,
     types::{ModelIndex, Pagination},
 };
@@ -17,6 +19,7 @@ use super::{
     forms::{FarmCreateForm, FarmUpdateForm},
     models::{Farm, FarmList},
     permissions::check_user_owns_farm,
+    utils::delete_farm_logo,
 };
 
 /// Handles the `GET /farms` route.
@@ -104,4 +107,67 @@ pub async fn farm_location_index(
         |_err| Err(EndpointRejection::internal_server_error()),
         |location_index| Ok(Json(location_index)),
     )
+}
+
+/// Handles the `POST /farms/:farm_id/logo` route.
+#[tracing::instrument(skip(db))]
+pub async fn farm_logo_upload(
+    user: FarmerUser,
+    farm_id: ModelID,
+    State(db): State<DatabaseConnection>,
+    multipart: Multipart,
+) -> EndpointResult<Json<String>> {
+    let check_permissions = check_user_owns_farm(user.0.id, farm_id, db.clone());
+
+    match check_permissions.await {
+        Ok(()) => {
+            let (handler, mut uploads) = files::accept_uploads(multipart, 1);
+            handler.accept().await?; // Receive logo from the client
+            if let Some(file) = uploads.files().await {
+                // Save a logo to the file system
+                let saved_to = files::save_image(file, FARM_LOGO_UPLOAD_DIR).await?;
+
+                // Save image path to the database
+                let (new_logo, old_logo) =
+                    Farm::insert_or_delete_logo(farm_id, Some(saved_to), db).await?;
+
+                // Delete old logo
+                if let Some(old_logo) = old_logo {
+                    tokio::spawn(async move { delete_farm_logo(&old_logo).await });
+                }
+
+                Ok(Json(new_logo.unwrap()))
+            } else {
+                Err(EndpointRejection::BadRequest(
+                    "Farm logo not received".into(),
+                ))
+            }
+        }
+        Err(err) => Err(err),
+    }
+}
+
+/// Handles the `DELETE /farms/:farm_id/logo` route.
+#[tracing::instrument(skip(db))]
+pub async fn farm_logo_delete(
+    user: FarmerUser,
+    farm_id: ModelID,
+    State(db): State<DatabaseConnection>,
+) -> EndpointResult<StatusCode> {
+    let check_permissions = check_user_owns_farm(user.0.id, farm_id, db.clone());
+
+    match check_permissions.await {
+        Ok(()) => {
+            // Delete the logo from the database
+            let (_, old_logo) = Farm::insert_or_delete_logo(farm_id, None, db).await?;
+
+            // Delete old logo
+            if let Some(old_logo) = old_logo {
+                tokio::spawn(async move { delete_farm_logo(&old_logo).await });
+            }
+
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(err) => Err(err),
+    }
 }

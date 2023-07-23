@@ -23,10 +23,14 @@ impl Session {
                     user_.account_locked,
                     user_.account_locked_reason,
                     user_.account_locked_until,
-                    address.verified AS email_verified
+                    address.verified AS email_verified,
+                    delete_request.delete_request_at AS "delete_request_at?"
                 FROM accounts.emails address
                 LEFT JOIN accounts.users user_
                     ON address.user_id = user_.id
+                LEFT JOIN accounts.account_delete_requests delete_request
+                    ON address.user_id = delete_request.user_id
+
                 WHERE LOWER(address.email) = LOWER( $1)
             "#,
             email
@@ -43,6 +47,7 @@ impl Session {
                         rec.account_locked_reason,
                         rec.account_locked_until,
                         rec.email_verified,
+                        rec.delete_request_at.is_some(),
                     )
                 });
                 Ok(user)

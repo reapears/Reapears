@@ -17,6 +17,10 @@ pub const STATIC_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/static");
 /// Users profile photo uploads directory
 pub const USER_UPLOAD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/media/uploads/user");
 
+/// Farm logos uploads directory
+pub const FARM_LOGO_UPLOAD_DIR: &str =
+    concat!(env!("CARGO_MANIFEST_DIR"), "/media/uploads/farm_logos");
+
 /// Cultivars image file uploads directory
 pub const CULTIVAR_UPLOAD_DIR: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/media/uploads/cultivar");

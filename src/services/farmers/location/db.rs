@@ -3,6 +3,7 @@
 use time::OffsetDateTime;
 
 use crate::{
+    endpoint::EndpointRejection,
     error::{ServerError, ServerResult},
     server::state::DatabaseConnection,
     services::produce::harvest::{delete_harvest_photos_list, models::HarvestIndex},
@@ -101,7 +102,8 @@ impl Location {
                     harvest.price AS "harvest_price?",
                     harvest.available_at AS "harvest_available_at?",
                     harvest.images AS harvest_images,
-                    cultivar.name AS "cultivar_name?"
+                    cultivar.name AS "cultivar_name?",
+                    cultivar.image AS cultivar_image
                 FROM services.locations location_
                 LEFT JOIN services.farms farm
                     ON location_.farm_id = farm.id
@@ -149,10 +151,13 @@ impl Location {
                             rec.harvest_available_at.unwrap(),
                             rec.harvest_images,
                             rec.cultivar_name.unwrap(),
+                            rec.cultivar_image,
                             rec.location_place_name,
                             rec.location_region,
                             rec.location_country,
+                            rec.location_coords,
                             rec.farm_name,
+                            0.into(), // boost amount not important
                         )
                     })
                     .collect();
@@ -218,6 +223,9 @@ impl Location {
                 Ok(location.id)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_location_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert location: {}", err);
                 Err(err.into())
             }
@@ -242,8 +250,8 @@ impl Location {
                 WHERE location.id = $6;
             "#,
             location.place_name,
-            location.region_id.map(|id| id.0),
-            location.country_id.map(|id| id.0),
+            location.region_id.0,
+            location.country_id.0,
             location.description,
             location.coords,
             id.0
@@ -256,6 +264,9 @@ impl Location {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_location_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update location:  {}", err);
                 Err(err.into())
             }
@@ -370,4 +381,53 @@ impl Location {
             }
         }
     }
+}
+
+/// Handle locations database constraints errors
+#[allow(clippy::cognitive_complexity)]
+pub fn handle_location_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if let sqlx::Error::Database(db_err) = err {
+        // Handle db foreign key constraints
+        if db_err.is_foreign_key_violation() {
+            if let Some(constraint) = db_err.constraint() {
+                if constraint == "locations_farm_id_fkey" {
+                    tracing::error!("Database error, farm not found. {:?}", err);
+                    return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                        "Farm not found.".into(),
+                    )));
+                }
+
+                if constraint == "locations_country_id_fkey" {
+                    tracing::error!("Database error, country not found. {:?}", err);
+                    return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                        "Country not found.".into(),
+                    )));
+                }
+
+                if constraint == "locations_region_id_fkey" {
+                    tracing::error!("Database error, region not found. {:?}", err);
+                    return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                        "Region not found.".into(),
+                    )));
+                }
+            }
+            tracing::error!(
+                "Database error, farm or country or region not found. {:?}",
+                err
+            );
+            return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                "farm or country or region  not found.".into(),
+            )));
+        }
+    }
+
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, location not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Location not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

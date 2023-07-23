@@ -4,10 +4,17 @@ use time::OffsetDateTime;
 
 use crate::{
     error::ServerResult,
+    files,
     server::state::DatabaseConnection,
-    services::{farmers::location::forms::LocationInsertData, produce::harvest::harvest_max_age},
+    services::{
+        farmers::location::{db::handle_location_database_error, forms::LocationInsertData},
+        produce::harvest::harvest_max_age,
+    },
+    settings,
     types::ModelID,
 };
+
+use super::db::handle_farm_database_error;
 
 /// Insert farm-location into the database
 pub async fn location_insert(
@@ -49,6 +56,9 @@ pub async fn location_insert(
             Ok(())
         }
         Err(err) => {
+            // Handle database constraint error
+            handle_location_database_error(&err)?;
+
             tracing::error!("Database error, failed to insert location: {}", err);
             Err(err.into())
         }
@@ -148,6 +158,9 @@ pub async fn delete_farm(
             Ok(())
         }
         Err(err) => {
+            // Handle database constraint error
+            handle_farm_database_error(&err)?;
+
             tracing::error!("Database error, failed to delete farm: {}", err);
             Err(err.into())
         }
@@ -185,6 +198,9 @@ pub async fn archive_farm(
             Ok(())
         }
         Err(err) => {
+            // Handle database constraint error
+            handle_farm_database_error(&err)?;
+
             tracing::error!("Database error, failed to archive farm: {}", err);
             Err(err.into())
         }
@@ -465,4 +481,14 @@ pub async fn farm_harvest_images(
             Err(err.into())
         }
     }
+}
+
+///  Delete farm logo fom the file system
+///
+/// # Errors
+///
+/// Return io error
+pub async fn delete_farm_logo(file_name: &str) -> ServerResult<()> {
+    let paths = files::saved_paths(settings::FARM_LOGO_UPLOAD_DIR, file_name);
+    files::delete_files(paths).await
 }
