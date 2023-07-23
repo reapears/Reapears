@@ -1,10 +1,12 @@
 //! Image file impls
 
-use camino::{Utf8Path, Utf8PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    {fmt, io::Cursor},
+};
+
 use image::{io::Reader as ImageReader, DynamicImage, ImageFormat};
 use tokio::task::{self, JoinSet};
-
-use std::{fmt, io::Cursor};
 
 use crate::{
     endpoint::{EndpointRejection, EndpointResult},
@@ -34,7 +36,7 @@ pub struct ImageFile {
 impl ImageFile {
     /// Save the image using the original format
     #[tracing::instrument(skip(self, save_to))]
-    pub async fn save_original<T>(self, save_to: T) -> ServerResult<Utf8PathBuf>
+    pub async fn save_original<T>(self, save_to: T) -> ServerResult<PathBuf>
     where
         T: fmt::Display + Send + 'static,
     {
@@ -50,7 +52,7 @@ impl ImageFile {
         self,
         save_to: T,
         format: SupportedImageOutputFormat,
-    ) -> ServerResult<Utf8PathBuf>
+    ) -> ServerResult<PathBuf>
     where
         T: fmt::Display + Send + 'static,
     {
@@ -62,7 +64,7 @@ impl ImageFile {
 
     /// Save image using all supported output formats
     #[tracing::instrument(skip(self, save_to))]
-    pub async fn save_all_format<T>(self, save_to: T) -> ServerResult<Vec<Utf8PathBuf>>
+    pub async fn save_all_format<T>(self, save_to: T) -> ServerResult<Vec<PathBuf>>
     where
         T: fmt::Display + Send + 'static,
     {
@@ -81,7 +83,12 @@ impl ImageFile {
             match join_result {
                 Ok(task_result) => match task_result {
                     Ok(path) => paths.push(path),
-                    Err(err) => return Err(err),
+                    Err(err) => {
+                        //    // Could not complete delete other files
+                        //    tokio::spawn(super::delete_files(paths).await)
+
+                        return Err(err);
+                    }
                 },
                 Err(err) => {
                     tracing::error!("Join handler error: {}", err);
@@ -93,16 +100,16 @@ impl ImageFile {
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    fn __save<T>(&self, save_to: T) -> ServerResult<Utf8PathBuf>
+    fn __save<T>(&self, save_to: T) -> ServerResult<PathBuf>
     where
         T: fmt::Display + Send + 'static,
     {
         let format = self.format.extensions_str()[0];
-        let path = Utf8Path::new(&save_to.to_string()).join(format!("{}.{}", self.id, format));
-        tracing::info!("{}", &format!("Saving an image at: {path}"));
+        let path = Path::new(&save_to.to_string()).join(format!("{}.{}", self.id, format));
+        tracing::info!("{}", &format!("Saving an image at: {path:?}"));
         match self.image.save(&path) {
             Ok(()) => {
-                tracing::info!("{}", &format!("Completed saving an image at: {path}"));
+                tracing::info!("{}", &format!("Completed saving an image at: {path:?}"));
                 Ok(path)
             }
             Err(err) => {
@@ -139,12 +146,12 @@ impl UploadedFile {
             // fails if the image format is not supported
             if !SUPPORTED_UPLOAD_IMAGE_FORMATS.contains(&ext.as_ref()) {
                 tracing::error!("Unsupported image form: {ext}");
-                return Err(ServerError::new(format!(
-                    "Unsupported image format: {ext}. Supported formats: jpg, png."
+                return Err(ServerError::bad_request(format!(
+                    "Invalid/Unsupported image format: {ext}. Supported formats: jpg, png."
                 )));
             }
-            let uploaded_format = ImageFormat::from_extension(&ext)
-                .ok_or_else(|| ServerError::new(format!("Unsupported image format: {ext}")))?;
+            // Safety: the image format is supported as it passed the first check
+            let uploaded_format = ImageFormat::from_extension(&ext).unwrap();
 
             let reader = ImageReader::new(Cursor::new(&self.content)).with_guessed_format()?;
             let format = reader.format().unwrap_or(uploaded_format);
@@ -171,7 +178,7 @@ impl UploadedFile {
 /// # Error
 ///
 /// Return an image or io error
-pub async fn save_image<T>(file: UploadedFile, upload_dir: T) -> EndpointResult<Vec<Utf8PathBuf>>
+pub async fn save_image<T>(file: UploadedFile, upload_dir: T) -> EndpointResult<Vec<PathBuf>>
 where
     T: fmt::Display + Send + 'static,
 {
@@ -205,65 +212,3 @@ impl fmt::Display for SupportedImageOutputFormat {
         }
     }
 }
-
-// /// Supported image formats on the server
-// #[derive(Debug, Clone)]
-// pub enum SupportedImageFormat {
-//     Jpeg,
-//     Png,
-// }
-
-// impl SupportedImageFormat {
-//     pub fn from_path(path: &str) -> ServerResult<Self> {
-//         match Utf8Path::new(path).extension() {
-//             Some(ext) => Self::from_str(ext),
-//             None => {
-//                 tracing::error!("Could not extract image format from path: {path}");
-//                 Err(
-//                     ServerError::new(format!("Failed to extract image format from : `{path}`"))
-//                         .into(),
-//                 )
-//             }
-//         }
-//     }
-// }
-
-// /// Parse SupportedImageFormat from file extension
-// impl FromStr for SupportedImageFormat {
-//     type Err = ServerError;
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         match ImageFormat::from_extension(s) {
-//             Some(format) => format.try_into(),
-//             None => Err(ServerError::new(format!("Unsupported image format: {s}")).into()),
-//         }
-//     }
-// }
-
-// impl fmt::Display for SupportedImageFormat {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         match self {
-//             Self::Jpeg => f.write_str("jpg"),
-//             Self::Png => f.write_str("png"),
-//         }
-//     }
-// }
-
-// impl From<SupportedImageFormat> for ImageFormat {
-//     fn from(value: SupportedImageFormat) -> Self {
-//         match value {
-//             SupportedImageFormat::Jpeg => ImageFormat::Jpeg,
-//             SupportedImageFormat::Png => ImageFormat::Png,
-//         }
-//     }
-// }
-
-// impl TryFrom<ImageFormat> for SupportedImageFormat {
-//     type Error = ServerError;
-//     fn try_from(value: ImageFormat) -> Result<Self, Self::Error> {
-//         match value {
-//             ImageFormat::Jpeg => Ok(Self::Jpeg),
-//             ImageFormat::Png => Ok(Self::Png),
-//             _ => Err(ServerError::new(format!("Unsupported image format: {value:?}")).into()),
-//         }
-//     }
-// }

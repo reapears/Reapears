@@ -6,14 +6,20 @@ use axum::{
     http::Request,
 };
 use serde::Deserialize;
-use validator::Validate;
 
-use crate::{endpoint::EndpointRejection, server::state::ServerState, types::ModelID};
+use crate::{
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
+    server::state::ServerState,
+    types::ModelID,
+};
 
 /// Cultivar category create form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CultivarCategoryForm {
-    #[validate(length(min = 1, max = 32))]
     pub name: String,
 }
 
@@ -33,28 +39,6 @@ impl From<CultivarCategoryForm> for CultivarCategoryInsertData {
     }
 }
 
-#[async_trait]
-impl<B> FromRequest<ServerState, B> for CultivarCategoryForm
-where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
-{
-    type Rejection = EndpointRejection;
-
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => {
-                tracing::error!("Validation error: {}", err);
-                Err(EndpointRejection::BadRequest(err.to_string().into()))
-            }
-        }
-    }
-}
-
-// ===== CultivarCategory Update form impl =====
-
 /// Cultivar category update form cleaned data
 #[derive(Debug, Clone)]
 pub struct CultivarCategoryUpdateData {
@@ -64,5 +48,42 @@ pub struct CultivarCategoryUpdateData {
 impl From<CultivarCategoryForm> for CultivarCategoryUpdateData {
     fn from(form: CultivarCategoryForm) -> Self {
         Self { name: form.name }
+    }
+}
+
+impl CultivarCategoryForm {
+    /// Validates cultivar category form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.name
+            .validate_len(0, 32, "Cultivar category must be at most 32 characters")?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.name = self.name.clean().to_titlecase();
+    }
+}
+
+#[async_trait]
+impl<B> FromRequest<ServerState, B> for CultivarCategoryForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        // Extract data
+        let Json(mut category) = Json::<Self>::from_request(req, state).await?;
+
+        // Validate form fields
+        category.validate()?;
+
+        Ok(category)
     }
 }

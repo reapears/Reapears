@@ -1,10 +1,12 @@
 //! User profile database impl
 
-use camino::Utf8PathBuf;
+use std::path::PathBuf;
+
 use itertools::Itertools;
 
 use crate::{
-    error::ServerResult,
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
     files,
     server::state::DatabaseConnection,
     services::{
@@ -46,8 +48,8 @@ impl UserProfile {
                 harvest.price AS "harvest_price?",
                 harvest.images AS harvest_images,
                 harvest.available_at AS "harvest_available_at?",
-                cultivar.name AS "cultivar_name?"
-                -- cultivar.image AS cultivar_image
+                cultivar.name AS "cultivar_name?",
+                cultivar.image AS cultivar_image
             FROM accounts.users user_
             LEFT JOIN accounts.user_profiles profile
                 ON user_.id = profile.user_id
@@ -128,10 +130,13 @@ impl UserProfile {
                                         rec.harvest_available_at.unwrap(),
                                         rec.harvest_images,
                                         rec.cultivar_name.unwrap(),
+                                        rec.cultivar_image,
                                         rec.location_place_name.unwrap(),
                                         rec.location_region,
                                         rec.location_country.unwrap(),
+                                        rec.location_coords,
                                         rec.farm_name.unwrap(),
+                                        0.into(), // boost amount not important
                                     )
                                 })
                                 .collect();
@@ -222,6 +227,9 @@ impl UserProfile {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_user_profile_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert user-profile: {}", err);
                 Err(err.into())
             }
@@ -260,6 +268,9 @@ impl UserProfile {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_user_profile_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update user-profile: {}", err);
                 Err(err.into())
             }
@@ -270,7 +281,7 @@ impl UserProfile {
     #[tracing::instrument(skip(db), name = "Insert profile photo-path")]
     pub async fn insert_photo(
         id: ModelID,
-        paths: Vec<Utf8PathBuf>,
+        paths: Vec<PathBuf>,
         db: DatabaseConnection,
     ) -> ServerResult<(String, Option<String>)> {
         let path = files::get_jpg_path(paths)?;
@@ -297,9 +308,26 @@ impl UserProfile {
                 Ok((path, rec.old_photo))
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_user_profile_database_error(&err)?;
+
                 tracing::error!("Database error, failed to set user photo-path: {}", err);
                 Err(err.into())
             }
         }
     }
+}
+
+/// Handle use profile database constraints errors
+#[allow(clippy::cognitive_complexity)]
+fn handle_user_profile_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, user not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "User not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

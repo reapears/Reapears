@@ -1,6 +1,7 @@
 //! Harvest helpers impls
 
-use camino::Utf8PathBuf;
+use std::path::PathBuf;
+
 use time::{Date, Duration, OffsetDateTime};
 use tokio::task::JoinSet;
 
@@ -12,7 +13,7 @@ use crate::{
     types::ModelID,
 };
 
-use super::HARVEST_MAX_AGE_TO_ARCHIVE;
+use super::{db::handle_harvest_database_error, HARVEST_MAX_AGE_TO_ARCHIVE};
 
 /// find harvest from the database for deletion
 ///
@@ -83,6 +84,9 @@ async fn delete_harvest(harvest_id: ModelID, db: DatabaseConnection) -> ServerRe
             Ok(())
         }
         Err(err) => {
+            // Handle database constraint error
+            handle_harvest_database_error(&err)?;
+
             tracing::error!("Database error, failed to delete harvest: {}", err);
             Err(err.into())
         }
@@ -114,6 +118,9 @@ async fn archive_harvest(harvest_id: ModelID, db: DatabaseConnection) -> ServerR
             Ok(())
         }
         Err(err) => {
+            // Handle database constraint error
+            handle_harvest_database_error(&err)?;
+
             tracing::error!("Database error, failed to archive harvest: {}", err);
             Err(err.into())
         }
@@ -174,16 +181,17 @@ pub fn harvest_max_age(finished_at: OffsetDateTime) -> ServerResult<OffsetDateTi
 ///
 /// Return an error if failed to delete files
 pub async fn delete_harvest_photos(paths: Vec<String>) -> ServerResult<()> {
-    let mut all_paths = Vec::with_capacity(10);
-    for path in paths {
-        let path = Utf8PathBuf::from(&path);
-        let file_stem = path.file_stem().unwrap_or(path.as_str());
-        for ext in files::IMAGE_FORMATS {
-            all_paths.push(Utf8PathBuf::from(format!(
-                "{HARVEST_UPLOAD_DIR}/{file_stem}.{ext}"
-            )));
-        }
-    }
+    let all_paths: Vec<_> = paths
+        .iter()
+        .flat_map(|file| {
+            files::IMAGE_FORMATS.into_iter().map(move |ext| {
+                PathBuf::from(HARVEST_UPLOAD_DIR)
+                    .join(file)
+                    .with_extension(ext)
+            })
+        })
+        .collect();
+
     files::delete_files(all_paths).await
 }
 

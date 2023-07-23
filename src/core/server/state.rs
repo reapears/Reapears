@@ -1,19 +1,20 @@
 //! Server State impls
 
+use std::fmt;
+
 use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 
-use std::fmt;
-
 use super::{config::Config, DATABASE_MAX_CONNECTIONS};
-use crate::mail::Mail;
+use crate::{features::direct_message::ChatBroadcast, mail::Mail};
 
 /// Server's state
 #[derive(Clone)]
 pub struct ServerState {
     pub database: DatabaseConnection,
     pub outlook_client: Mail,
+    pub chat: ChatBroadcast,
     pub cookie_key: Key,
 }
 
@@ -22,6 +23,7 @@ impl ServerState {
         Self {
             database: DatabaseConnection::new(&config.database_url).await,
             outlook_client: Mail::outlook(config.outlook_password),
+            chat: ChatBroadcast::new(),
             cookie_key: config.cookie_key,
         }
     }
@@ -39,6 +41,12 @@ impl fmt::Debug for ServerState {
 impl FromRef<ServerState> for DatabaseConnection {
     fn from_ref(state: &ServerState) -> Self {
         state.database.clone()
+    }
+}
+
+impl FromRef<ServerState> for ChatBroadcast {
+    fn from_ref(state: &ServerState) -> Self {
+        state.chat.clone()
     }
 }
 

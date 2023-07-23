@@ -1,6 +1,11 @@
 //! Cultivar category database impl
 
-use crate::{error::ServerResult, server::state::DatabaseConnection, types::ModelID};
+use crate::{
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
+    server::state::DatabaseConnection,
+    types::ModelID,
+};
 
 use super::{
     forms::{RegionInsertData, RegionUpdateData},
@@ -60,6 +65,9 @@ impl Region {
                 Ok(region.id)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_region_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert location region: {}", err);
                 Err(err.into())
             }
@@ -92,6 +100,9 @@ impl Region {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_region_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update location region: {}", err);
                 Err(err.into())
             }
@@ -116,9 +127,44 @@ impl Region {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_region_database_error(&err)?;
+
                 tracing::error!("Database error, failed to delete location region: {}", err);
                 Err(err.into())
             }
         }
     }
+}
+
+/// Handle regions database constraints errors
+#[allow(clippy::cognitive_complexity)]
+fn handle_region_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if let sqlx::Error::Database(db_err) = err {
+        // Handle db unique constraints
+        if db_err.is_unique_violation() {
+            tracing::error!("Database error, Region already exists. {:?}", err);
+            return Err(ServerError::rejection(EndpointRejection::Conflict(
+                "Region already exists.".into(),
+            )));
+        }
+
+        // Handle db foreign key constraints
+        if db_err.is_foreign_key_violation() {
+            tracing::error!("Database error, country not found. {:?}", err);
+            return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                "Country  not found.".into(),
+            )));
+        }
+    }
+
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, region not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Region not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

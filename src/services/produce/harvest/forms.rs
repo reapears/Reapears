@@ -1,6 +1,5 @@
 //! Harvest forms impls
 
-#![allow(clippy::fallible_impl_from)]
 use axum::{
     async_trait,
     extract::{rejection::JsonRejection, FromRequest, FromRequestParts, Json},
@@ -8,45 +7,31 @@ use axum::{
 };
 use serde::Deserialize;
 use time::{Date, OffsetDateTime};
-use tokio::task::JoinSet;
-use validator::Validate;
 
 use crate::{
     auth::FarmerUser,
-    endpoint::{validators::join_validation_tasks, EndpointRejection, EndpointResult},
-    server::state::ServerState,
-    services::{
-        farmers::location::permissions::check_user_owns_location,
-        produce::cultivar::forms::validate_cultivar_id,
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
     },
+    server::state::ServerState,
+    services::farmers::location::permissions::check_user_owns_location,
     types::{price::Price, ModelID},
 };
 
-use helpers::{
-    validate_available_at, validate_cultivar_id_and_location_id_exists, validate_harvest_id,
-    validate_price,
-};
+use helpers::{validate_available_at, validate_price};
 
-use super::permissions::{check_user_can_update_harvest, check_user_owns_harvest};
+use super::permissions::check_user_can_update_harvest;
 
 /// Harvest create form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HarvestCreateForm {
-    #[validate(length(min = 1, max = 64, message = "Invalid location id"))]
     pub location_id: String,
-
-    #[validate(length(min = 1, max = 64, message = "Invalid cultivar id"))]
     pub cultivar_id: String,
-
     pub price: Price,
-
-    #[validate(length(min = 1, max = 32))]
     pub r#type: Option<String>,
-
-    #[validate(length(min = 1, max = 512))]
     pub description: Option<String>,
-
     pub available_at: Option<Date>,
 }
 
@@ -63,6 +48,7 @@ pub struct HarvestInsertData {
     pub created_at: OffsetDateTime,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<HarvestCreateForm> for HarvestInsertData {
     fn from(form: HarvestCreateForm) -> Self {
         let created_at = OffsetDateTime::now_utc();
@@ -81,6 +67,36 @@ impl From<HarvestCreateForm> for HarvestInsertData {
 }
 
 impl HarvestCreateForm {
+    /// Validates harvest form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.location_id.validate_id("Invalid location id")?;
+        self.cultivar_id.validate_id("Invalid cultivar id")?;
+        validate_price(&self.price)?;
+
+        if let Some(ref type_) = self.r#type {
+            type_.validate_len(0, 32, "Harvest type must be at most 32 characters")?;
+        }
+
+        if let Some(ref desc) = self.description {
+            desc.validate_len(0, 32, "Harvest description must be at most 512 characters")?;
+        }
+
+        if let Some(available_at) = self.available_at {
+            validate_available_at(available_at)?;
+        }
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.r#type = self.r#type.as_ref().map(|type_| type_.clean());
+        self.description = self.description.as_ref().map(|desc| desc.clean());
+    }
+
     ///  Validate a user has the permissions to create a harvest
     async fn authorize_request(
         state: &ServerState,
@@ -101,76 +117,42 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        // Extract data
         let (mut parts, body) = req.into_parts();
-
         let user = { FarmerUser::from_parts(&mut parts, state).await? };
-        let Json(harvest) =
+        let Json(mut harvest) =
             Json::<Self>::from_request(Request::from_parts(parts, body), state).await?;
 
-        let Ok(location_id) = ModelID::try_from(harvest.location_id.as_str()) else{
-            return Err(EndpointRejection::BadRequest("Location not found".into()));
-        };
+        // Validate form fields
+        harvest.validate()?;
 
         // Authorize request
+        let location_id = ModelID::from_str_unchecked(harvest.location_id.as_str());
         Self::authorize_request(state, user, location_id).await?;
 
-        match harvest.validate() {
-            Ok(()) => {
-                // Validate ids are valid Uuids
-                let Ok(cultivar_id) = ModelID::try_from(harvest.cultivar_id.as_str()) else{
-                    return Err(EndpointRejection::BadRequest("Cultivar not found".into()));
-                };
-
-                let Ok(location_id) = ModelID::try_from(harvest.location_id.as_str()) else{
-                    return Err(EndpointRejection::BadRequest("Location not found".into()));
-                };
-
-                let db = state.database.clone();
-                validate_cultivar_id_and_location_id_exists(cultivar_id, location_id, db).await?;
-                validate_price(&harvest.price)?;
-
-                if let Some(available_at) = harvest.available_at {
-                    validate_available_at(available_at)?;
-                }
-
-                Ok(harvest)
-            }
-            Err(err) => {
-                tracing::error!("Validation error: {}", err);
-                Err(EndpointRejection::BadRequest(err.to_string().into()))
-            }
-        }
+        Ok(harvest)
     }
 }
 
 // ===== Update form impls =====
 
 /// Harvest update form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HarvestUpdateForm {
-    #[validate(length(min = 1, max = 64, message = "Invalid location id"))]
-    pub location_id: Option<String>,
-
-    #[validate(length(min = 1, max = 64, message = "Invalid cultivar id"))]
-    pub cultivar_id: Option<String>,
-
-    pub price: Option<Price>,
-
-    #[validate(length(min = 1, max = 32))]
+    pub location_id: String,
+    pub cultivar_id: String,
+    pub price: Price,
     pub r#type: Option<String>,
-
-    #[validate(length(min = 1, max = 512))]
     pub description: Option<String>,
-
     pub available_at: Option<Date>,
 }
 
 /// Harvest update form cleaned data
 #[derive(Debug, Clone)]
 pub struct HarvestUpdateData {
-    pub location_id: Option<ModelID>,
-    pub cultivar_id: Option<ModelID>,
+    pub location_id: ModelID,
+    pub cultivar_id: ModelID,
     pub price: serde_json::Value,
     pub r#type: Option<String>,
     pub description: Option<String>,
@@ -178,11 +160,12 @@ pub struct HarvestUpdateData {
     pub updated_at: OffsetDateTime,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<HarvestUpdateForm> for HarvestUpdateData {
     fn from(form: HarvestUpdateForm) -> Self {
         Self {
-            location_id: form.location_id.map(ModelID::from_str_unchecked),
-            cultivar_id: form.cultivar_id.map(ModelID::from_str_unchecked),
+            location_id: ModelID::from_str_unchecked(form.location_id),
+            cultivar_id: ModelID::from_str_unchecked(form.cultivar_id),
             price: serde_json::to_value(form.price).unwrap(),
             r#type: form.r#type,
             description: form.description,
@@ -193,21 +176,45 @@ impl From<HarvestUpdateForm> for HarvestUpdateData {
 }
 
 impl HarvestUpdateForm {
+    /// Validates harvest form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        //Clean data
+        self.clean_data();
+
+        self.location_id.validate_id("Invalid location id")?;
+        self.cultivar_id.validate_id("Invalid cultivar id")?;
+        validate_price(&self.price)?;
+
+        if let Some(ref type_) = self.r#type {
+            type_.validate_len(0, 32, "Harvest type must be at most 32 characters")?;
+        }
+
+        if let Some(ref desc) = self.description {
+            desc.validate_len(0, 32, "Harvest description must be at most 512 characters")?;
+        }
+
+        if let Some(available_at) = self.available_at {
+            validate_available_at(available_at)?;
+        }
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.r#type = self.r#type.as_ref().map(|type_| type_.clean());
+        self.description = self.description.as_ref().map(|desc| desc.clean());
+    }
+
     ///  Validate a user has the permissions to update a harvest
     async fn authorize_request(
         state: &ServerState,
         user: FarmerUser,
         harvest_id: ModelID,
-        location_id: Option<ModelID>,
+        location_id: ModelID,
     ) -> EndpointResult<()> {
         let db = state.database.clone();
-        if let Some(location_id) = location_id {
-            // location id is provided, check also the location belongs to current user
-            check_user_can_update_harvest(user.id(), location_id, harvest_id, db).await
-        } else {
-            // Check only the harvest belong to the current user
-            check_user_owns_harvest(user.id(), harvest_id, db).await
-        }
+        check_user_can_update_harvest(user.id(), location_id, harvest_id, db).await
     }
 }
 
@@ -220,67 +227,21 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        // Extract data
         let (mut parts, body) = req.into_parts();
         let user = { FarmerUser::from_parts(&mut parts, state).await? };
         let harvest_id = { ModelID::from_request_parts(&mut parts, state).await? };
-        let Json(input) =
+        let Json(mut harvest) =
             Json::<Self>::from_request(Request::from_parts(parts, body), state).await?;
 
-        let location_id = match input.location_id {
-            Some(ref id) => Some(
-                ModelID::try_from(id.as_str())
-                    .map_err(|_err| EndpointRejection::BadRequest("Location not found".into()))?,
-            ),
-            None => None,
-        };
+        // Validate form fields
+        harvest.validate()?;
 
         // Authorize request
+        let location_id = ModelID::from_str_unchecked(harvest.location_id.as_str());
         Self::authorize_request(state, user, harvest_id, location_id).await?;
 
-        match input.validate() {
-            Ok(()) => {
-                let mut tasks = JoinSet::new();
-                let mut task_handlers = Vec::new();
-                let db = state.database.clone();
-
-                let harvest_id_handler = tasks.spawn({
-                    let db = db.clone();
-                    async move { validate_harvest_id(harvest_id, db).await }
-                });
-                task_handlers.push(harvest_id_handler);
-
-                // Validate cultivar id
-                if let Some(ref cultivar_id) = input.cultivar_id {
-                    let cultivar_id_handler =
-                        tasks.spawn({
-                            let Ok(cultivar_id) = ModelID::try_from(cultivar_id.as_str()) else{
-                                return Err(EndpointRejection::BadRequest("Cultivar not found".into()));
-                            };
-                            let db = db.clone();
-                            async move { validate_cultivar_id(cultivar_id, db).await }});
-                    task_handlers.push(cultivar_id_handler);
-                }
-
-                // Wait for tasks to finish
-                join_validation_tasks(tasks, &task_handlers).await?;
-
-                // Validate price
-                if let Some(ref price) = input.price {
-                    validate_price(price)?;
-                }
-
-                // Validate available_at date
-                if let Some(available_at) = input.available_at {
-                    validate_available_at(available_at)?;
-                }
-
-                Ok(input)
-            }
-            Err(err) => {
-                tracing::error!("Validation error: {}", err);
-                Err(EndpointRejection::BadRequest(err.to_string().into()))
-            }
-        }
+        Ok(harvest)
     }
 }
 
@@ -288,9 +249,9 @@ where
 
 mod helpers {
     use crate::{
-        core::{server::state::DatabaseConnection, types::price::Price},
+        core::types::price::Price,
         endpoint::{EndpointRejection, EndpointResult},
-        types::ModelID,
+        // types::ModelID,
     };
     use time::{Date, OffsetDateTime};
 
@@ -314,72 +275,73 @@ mod helpers {
         Ok(())
     }
 
-    /// Validates harvest `id` exists
-    pub async fn validate_harvest_id(id: ModelID, db: DatabaseConnection) -> EndpointResult<()> {
-        match sqlx::query!(
-            r#"
-                SELECT EXISTS(
-                    SELECT 1 FROM services.active_harvests harvest
-                    WHERE harvest.id = $1
-                ) AS "exists!"
-            "#,
-            id.0
-        )
-        .fetch_one(&db.pool)
-        .await
-        {
-            // Returns ok is the harvest id exists
-            Ok(row) => {
-                if row.exists {
-                    Ok(())
-                } else {
-                    tracing::error!("Harvest id: '{}' does not exists.", id);
-                    Err(EndpointRejection::BadRequest("Harvest not found.".into()))
-                }
-            }
-            Err(err) => {
-                tracing::error!("Database error: {}", err);
-                Err(EndpointRejection::internal_server_error())
-            }
-        }
-    }
+    // /// Validates harvest `id` exists
+    // #[allow(dead_code)]
+    // pub async fn validate_harvest_id(id: ModelID, db: DatabaseConnection) -> EndpointResult<()> {
+    //     match sqlx::query!(
+    //         r#"
+    //             SELECT EXISTS(
+    //                 SELECT 1 FROM services.active_harvests harvest
+    //                 WHERE harvest.id = $1
+    //             ) AS "exists!"
+    //         "#,
+    //         id.0
+    //     )
+    //     .fetch_one(&db.pool)
+    //     .await
+    //     {
+    //         // Returns ok is the harvest id exists
+    //         Ok(row) => {
+    //             if row.exists {
+    //                 Ok(())
+    //             } else {
+    //                 tracing::error!("Harvest id: '{}' does not exists.", id);
+    //                 Err(EndpointRejection::BadRequest("Harvest not found.".into()))
+    //             }
+    //         }
+    //         Err(err) => {
+    //             tracing::error!("Database error: {}", err);
+    //             Err(EndpointRejection::internal_server_error())
+    //         }
+    //     }
+    // }
 
-    /// Validate `cultivar_id` and `location_id` are records in the database
-    pub async fn validate_cultivar_id_and_location_id_exists(
-        cultivar_id: ModelID,
-        location_id: ModelID,
-        db: DatabaseConnection,
-    ) -> EndpointResult<()> {
-        match sqlx::query!(
-            r#"
-                SELECT
-                    EXISTS(SELECT 1 FROM services.cultivars WHERE id = $1) AS "cultivar_exists!",
-                    EXISTS(SELECT 1 FROM services.active_locations WHERE id = $2) AS "location_exists!";
-            "#,
-            cultivar_id.0,
-            location_id.0
-        )
-        .fetch_one(&db.pool)
-        .await
-        {
-            Ok(rec) => match (rec.cultivar_exists, rec.location_exists) {
-                // cultivar and location exists
-                (true, true) => Ok(()),
-                // cultivar does not exists
-                (false, _) => {
-                    tracing::error!("Cultivar id: '{}' does not exists.", cultivar_id);
-                    Err(EndpointRejection::BadRequest("Cultivar not found".into()))
-                }
-                // location does not exists
-                (_, false) => {
-                    tracing::error!("Location id: '{}' does not exists.", cultivar_id);
-                    Err(EndpointRejection::BadRequest("Location not found".into()))
-                }
-            },
-            Err(err) => {
-                tracing::error!("Database error: {}", err);
-                Err(EndpointRejection::internal_server_error())
-            }
-        }
-    }
+    // /// Validate `cultivar_id` and `location_id` are records in the database
+    // pub async fn validate_cultivar_id_and_location_id_exists(
+    //     cultivar_id: ModelID,
+    //     location_id: ModelID,
+    //     db: DatabaseConnection,
+    // ) -> EndpointResult<()> {
+    //     match sqlx::query!(
+    //         r#"
+    //             SELECT
+    //                 EXISTS(SELECT 1 FROM services.cultivars WHERE id = $1) AS "cultivar_exists!",
+    //                 EXISTS(SELECT 1 FROM services.active_locations WHERE id = $2) AS "location_exists!";
+    //         "#,
+    //         cultivar_id.0,
+    //         location_id.0
+    //     )
+    //     .fetch_one(&db.pool)
+    //     .await
+    //     {
+    //         Ok(rec) => match (rec.cultivar_exists, rec.location_exists) {
+    //             // cultivar and location exists
+    //             (true, true) => Ok(()),
+    //             // cultivar does not exists
+    //             (false, _) => {
+    //                 tracing::error!("Cultivar id: '{}' does not exists.", cultivar_id);
+    //                 Err(EndpointRejection::BadRequest("Cultivar not found".into()))
+    //             }
+    //             // location does not exists
+    //             (_, false) => {
+    //                 tracing::error!("Location id: '{}' does not exists.", location_id);
+    //                 Err(EndpointRejection::BadRequest("Location not found".into()))
+    //             }
+    //         },
+    //         Err(err) => {
+    //             tracing::error!("Database error: {}", err);
+    //             Err(EndpointRejection::internal_server_error())
+    //         }
+    //     }
+    // }
 }

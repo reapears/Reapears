@@ -1,7 +1,8 @@
 //! `FarmRating` database impl
 
 use crate::{
-    error::ServerResult,
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
     server::state::DatabaseConnection,
     types::{ModelID, Pagination},
 };
@@ -168,6 +169,9 @@ impl FarmRating {
                 Ok(farm_rating.id)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_farm_rating_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert farm-rating: {}", err);
                 Err(err.into())
             }
@@ -189,7 +193,7 @@ impl FarmRating {
                     updated_at = $3
                     WHERE farm_rating.id = $4
             "#,
-            farm_rating.grade.map(i32::from),
+            i32::from(farm_rating.grade),
             farm_rating.comment,
             farm_rating.updated_at,
             id.0,
@@ -202,6 +206,9 @@ impl FarmRating {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_farm_rating_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update farm-rating: {}", err);
                 Err(err.into())
             }
@@ -226,6 +233,9 @@ impl FarmRating {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_farm_rating_database_error(&err)?;
+
                 tracing::error!("Database error, failed to delete farm-rating: {}", err);
                 Err(err.into())
             }
@@ -301,4 +311,43 @@ impl FarmRating {
             }
         }
     }
+}
+
+/// Handle harvest database constraints errors
+#[allow(clippy::cognitive_complexity)]
+fn handle_farm_rating_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if let sqlx::Error::Database(db_err) = err {
+        // Handle db foreign key constraints
+        if db_err.is_foreign_key_violation() {
+            if let Some(constraint) = db_err.constraint() {
+                if constraint == "farm_ratings_author_id_fkey" {
+                    tracing::error!("Database error, user not found. {:?}", err);
+                    return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                        "User not found.".into(),
+                    )));
+                }
+
+                if constraint == "farm_ratings_farm_id_fkey" {
+                    tracing::error!("Database error, farm not found. {:?}", err);
+                    return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                        "Farm not found.".into(),
+                    )));
+                }
+            }
+            tracing::error!("Database error, farm or user not found. {:?}", err);
+            return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                "Farm or user not found.".into(),
+            )));
+        }
+    }
+
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, farm rating not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Farm rating not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

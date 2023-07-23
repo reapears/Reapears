@@ -89,6 +89,7 @@ impl FromRequestParts<ServerState> for SuperUser {
     ) -> Result<Self, Self::Rejection> {
         let user = CurrentUser::from_request_parts(parts, state).await?;
         if !user.is_superuser {
+            tracing::trace!("Request rejected superuser privilege required.");
             return Err(EndpointRejection::forbidden());
         }
         Ok(Self(user))
@@ -129,6 +130,7 @@ impl FromRequestParts<ServerState> for AdminUser {
     ) -> Result<Self, Self::Rejection> {
         let user = CurrentUser::from_request_parts(parts, state).await?;
         if !user.is_staff {
+            tracing::trace!("Request rejected is staff privilege required.");
             return Err(EndpointRejection::forbidden());
         }
         Ok(Self(user))
@@ -152,6 +154,7 @@ impl AdminUser {
     pub async fn from_parts(parts: &mut Parts, state: &ServerState) -> EndpointResult<Self> {
         let user = CurrentUser::from_parts(parts, state).await?;
         if !user.is_staff {
+            tracing::trace!("Request rejected staff privilege required.");
             return Err(EndpointRejection::forbidden());
         }
         Ok(Self(user))

@@ -1,7 +1,8 @@
 //! Uploaded file impls
 
+use std::path::{Path, PathBuf};
+
 use axum::extract::multipart::Field;
-use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::{endpoint::EndpointRejection, error::ServerResult, types::ModelID};
 
@@ -30,7 +31,7 @@ impl UploadedFile {
         };
         tracing::Span::current().record("file_name", file_name);
 
-        let Some(file_ext) = Utf8Path::new(file_name).extension().map(std::borrow::ToOwned::to_owned) else {
+        let Some(file_ext) = Path::new(file_name).extension().map(|ext|ext.to_string_lossy().to_string()) else {
             tracing::error!("Rejected: uploaded file's name:{} has no extension", file_name);
             return Err(EndpointRejection::BadRequest(
                 "File name has no extension".into(),
@@ -38,7 +39,11 @@ impl UploadedFile {
         };
 
         // Safe to unwrap here because file_ext extraction has passed (previous lines)
-        let file_stem = Utf8Path::new(&file_name).file_stem().unwrap().to_owned();
+        let file_stem = Path::new(&file_name)
+            .file_stem()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
         let Some(content_type) = field.content_type().map(std::borrow::ToOwned::to_owned) else{
             tracing::error!("Rejected: uploaded file has no content type");
@@ -69,8 +74,8 @@ impl UploadedFile {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn save(self, to: String) -> ServerResult<Utf8PathBuf> {
-        let path = Utf8Path::new(&to).join(self.stem).join(self.ext);
+    pub async fn save(self, to: String) -> ServerResult<PathBuf> {
+        let path = Path::new(&to).join(self.stem).join(self.ext);
         super::save_file(&path, &self.content).await
     }
 

@@ -16,7 +16,7 @@ use serde_json::{json, Value};
 
 use std::fmt;
 
-use crate::error::ServerError;
+use crate::error::{ServerError, ServerErrorKind};
 use EndpointRejection::*;
 
 pub type EndpointResult<T> = Result<T, EndpointRejection>;
@@ -97,10 +97,9 @@ impl EndpointRejection {
 
 impl From<ServerError> for EndpointRejection {
     fn from(err: ServerError) -> Self {
-        if err.is_user_error() {
-            Self::BadRequest(err.to_string().into())
-        } else {
-            Self::InternalServerError(ServerError::MESSAGE.into())
+        match err.kind {
+            ServerErrorKind::UserError(err) => err,
+            _ => Self::InternalServerError(ServerError::MESSAGE.into()),
         }
     }
 }
@@ -161,6 +160,8 @@ impl From<JsonRejection> for EndpointRejection {
         }
     }
 }
+
+// ===== Error Response impls =====
 
 // RejectionResponse
 pub trait IntoRejectionResponse {

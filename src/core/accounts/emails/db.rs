@@ -3,7 +3,11 @@
 use time::OffsetDateTime;
 
 use crate::{
-    auth::TokenHash, error::ServerResult, server::state::DatabaseConnection, types::ModelID,
+    auth::TokenHash,
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
+    server::state::DatabaseConnection,
+    types::ModelID,
 };
 
 use super::{
@@ -62,6 +66,9 @@ impl EmailModel {
         {
             Ok(rec) => Ok((rec.first_name, rec.email)),
             Err(err) => {
+                // Handle database constraint error
+                handle_email_database_error(&err)?;
+
                 tracing::error!("Database error, failed to find email by token: {}", err);
                 Err(err.into())
             }
@@ -173,6 +180,9 @@ impl EmailModel {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_email_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update user email: {}", err);
                 Err(err.into())
             }
@@ -253,6 +263,9 @@ impl EmailModel {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_email_database_error(&err)?;
+
                 tracing::error!("Database error, failed to verify email: {}", err);
                 Err(err.into())
             }
@@ -325,6 +338,9 @@ impl EmailModel {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_email_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to insert new email verification code: {}",
                     err
@@ -419,9 +435,26 @@ impl EmailModel {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_email_database_error(&err)?;
+
                 tracing::error!("Database error, failed to delete unverified user: {}", err);
                 Err(err.into())
             }
         }
     }
+}
+
+/// Handle emails database constraints errors
+#[allow(clippy::cognitive_complexity)]
+pub fn handle_email_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    //
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, Account email not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Account not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

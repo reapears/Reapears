@@ -7,14 +7,19 @@ use axum::{
 };
 use serde::Deserialize;
 
-use validator::Validate;
-
-use crate::{endpoint::EndpointRejection, server::state::ServerState, types::ModelID};
+use crate::{
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
+    server::state::ServerState,
+    types::ModelID,
+};
 
 /// Country create form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CountryForm {
-    #[validate(length(min = 1, max = 32))]
     pub name: String,
 }
 
@@ -34,29 +39,6 @@ impl From<CountryForm> for CountryInsertData {
     }
 }
 
-#[async_trait]
-impl<B> FromRequest<ServerState, B> for CountryForm
-where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
-{
-    type Rejection = EndpointRejection;
-
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
-
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => {
-                tracing::error!("Validation error: {}", err);
-                Err(EndpointRejection::BadRequest(err.to_string().into()))
-            }
-        }
-    }
-}
-
-// ===== Country update impl =====
-
 /// Country update form cleaned data
 #[derive(Debug, Clone)]
 pub struct CountryUpdateData {
@@ -66,5 +48,42 @@ pub struct CountryUpdateData {
 impl From<CountryForm> for CountryUpdateData {
     fn from(form: CountryForm) -> Self {
         Self { name: form.name }
+    }
+}
+
+impl CountryForm {
+    /// Validates region form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.name
+            .validate_len(0, 32, "Country name must be at most 32 characters")?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.name = self.name.clean().to_titlecase();
+    }
+}
+
+#[async_trait]
+impl<B> FromRequest<ServerState, B> for CountryForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        // Extract data
+        let Json(mut country) = Json::<Self>::from_request(req, state).await?;
+
+        // Validate from fields
+        country.validate()?;
+
+        Ok(country)
     }
 }

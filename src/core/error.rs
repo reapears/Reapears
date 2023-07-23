@@ -2,6 +2,8 @@
 
 use std::{convert::AsRef, error::Error as StdError, fmt};
 
+use crate::endpoint::EndpointRejection;
+
 pub type ServerResult<T> = Result<T, ServerError>;
 type GenericError = Box<dyn StdError + Send + Sync + 'static>;
 
@@ -29,11 +31,20 @@ Something went wrong Unfortunately, a server error prevented your request from b
     }
 
     /// Create a new user error
+    /// with the status code of bad request
     #[must_use]
-    pub fn user_error(error_msg: impl AsRef<str>) -> Self {
-        let kind =
-            ServerErrorKind::UserError(Box::<dyn StdError + Send + Sync>::from(error_msg.as_ref()));
+    pub fn bad_request(err_msg: impl AsRef<str>) -> Self {
+        let err_msg = err_msg.as_ref().to_owned();
+        let kind = ServerErrorKind::UserError(EndpointRejection::BadRequest(err_msg.into()));
         Self { kind }
+    }
+
+    /// Create a new `EndpointRejection` error
+    #[must_use]
+    pub fn rejection(rej: EndpointRejection) -> Self {
+        Self {
+            kind: ServerErrorKind::UserError(rej),
+        }
     }
 
     /// Create a new internal server from a generic error
@@ -57,7 +68,7 @@ impl StdError for ServerError {}
 #[derive(Debug)]
 pub enum ServerErrorKind {
     /// An error coursed by a client
-    UserError(GenericError),
+    UserError(EndpointRejection),
     /// A wrapper on top of `sqlx::Error`
     Database(sqlx::Error),
     /// A wrapper on top of `serde_json::Error`
@@ -77,14 +88,14 @@ pub enum ServerErrorKind {
 impl fmt::Display for ServerErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            // Self::UserError(err) => err.fmt(f),
+            Self::UserError(err) => err.fmt(f),
             Self::Database(err) => err.fmt(f),
             Self::Io(err) => err.fmt(f),
             Self::PasswordHash(err) => err.fmt(f),
             Self::JsonError(err) => err.fmt(f),
             Self::ImageError(err) => err.fmt(f),
             Self::LettreError(err) => err.fmt(f),
-            Self::Internal(err) | Self::UserError(err) => err.fmt(f),
+            Self::Internal(err) => err.fmt(f),
         }
     }
 }

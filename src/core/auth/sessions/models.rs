@@ -16,6 +16,7 @@ pub struct LoginUser {
     pub account_locked_reason: Option<String>,
     pub account_locked_until: Option<Date>,
     pub email_verified: bool,
+    pub requested_account_delete: bool,
 }
 
 impl LoginUser {
@@ -28,6 +29,7 @@ impl LoginUser {
         account_locked_reason: Option<String>,
         account_locked_until: Option<Date>,
         email_verified: bool,
+        requested_account_delete: bool,
     ) -> Self {
         Self {
             id,
@@ -36,6 +38,7 @@ impl LoginUser {
             account_locked_reason,
             account_locked_until,
             email_verified,
+            requested_account_delete,
         }
     }
 }

@@ -6,17 +6,36 @@ use axum::{
     http::Request,
 };
 use serde::Deserialize;
-use validator::Validate;
 
 use crate::{
-    auth::hash_password, endpoint::EndpointRejection, error::ServerResult,
+    auth::hash_password,
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
+    error::ServerResult,
     server::state::ServerState,
 };
 
 /// User password verify form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PasswordVerifyForm {
     pub password: String,
+}
+
+impl PasswordVerifyForm {
+    /// Validates password verify form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        self.password.validate_len(0, 25, "Incorrect password")?;
+
+        Ok(())
+    }
+
+    // /// Clean form data
+    // fn clean_data(&mut self) {
+    //     self.password = self.password.clean();
+    // }
 }
 
 #[async_trait]
@@ -28,19 +47,21 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        // Extract data
+        let Json(mut password_verify) = Json::<Self>::from_request(req, state).await?;
 
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Validate form fields
+        password_verify.validate()?;
+
+        Ok(password_verify)
     }
 }
 
-// ---ChangeForm---
+// ===== Password Change Form impls =====
 
 /// User password change form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PasswordChangeForm {
     pub current: String,
     pub new: String,
@@ -48,6 +69,25 @@ pub struct PasswordChangeForm {
 }
 
 impl PasswordChangeForm {
+    /// Validates password change form inputs
+    fn validate(&self) -> EndpointResult<()> {
+        self.current.validate_len(0, 25, "Incorrect password")?;
+
+        self.new.validate_len(
+            6,
+            24,
+            "password must be as least 6 character and at most 24 characters long",
+        )?;
+
+        if self.new != self.confirm {
+            return Err(EndpointRejection::BadRequest(
+                "new and confirm password must be the same.".into(),
+            ));
+        }
+
+        Ok(())
+    }
+
     /// Hash new password and return `phc_string`
     pub async fn try_phc(self) -> ServerResult<String> {
         hash_password(self.new).await
@@ -63,21 +103,40 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        // Extract data
+        let Json(password_change) = Json::<Self>::from_request(req, state).await?;
 
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Validate form fields
+        password_change.validate()?;
+
+        Ok(password_change)
     }
 }
 
-// ---ForgotForm---
+// ===== Password ForgotForm impls =====
 
-// USer password forgot form
-#[derive(Debug, Clone, Deserialize, Validate)]
+// User password forgot form
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PasswordForgotForm {
     pub email: String,
+}
+
+impl PasswordForgotForm {
+    /// Validates password forgot form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean form fields
+        self.clean_data();
+
+        self.email.validate_email()?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.email = self.email.clean().to_ascii_lowercase();
+    }
 }
 
 #[async_trait]
@@ -89,25 +148,44 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        // Extract data
+        let Json(mut password_forgot) = Json::<Self>::from_request(req, state).await?;
 
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Validate form fields
+        password_forgot.validate()?;
+
+        Ok(password_forgot)
     }
 }
 
-// ---ResetForm----
+// ===== Password ResetForm impls =====
 
 // User password reset form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PasswordResetForm {
     pub new: String,
     pub confirm: String,
 }
 
 impl PasswordResetForm {
+    /// Validates password reset form inputs
+    fn validate(&self) -> EndpointResult<()> {
+        self.new.validate_len(
+            6,
+            24,
+            "password must be as least 6 character and at most 24 characters long",
+        )?;
+
+        if self.new != self.confirm {
+            return Err(EndpointRejection::BadRequest(
+                "new and confirm password must be the same.".into(),
+            ));
+        }
+
+        Ok(())
+    }
+
     /// Hash new password and return `phc_string`
     pub async fn try_phc(self) -> ServerResult<String> {
         hash_password(self.new).await
@@ -123,11 +201,11 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        let Json(password_reset) = Json::<Self>::from_request(req, state).await?;
 
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Validate form fields
+        password_reset.validate()?;
+
+        Ok(password_reset)
     }
 }

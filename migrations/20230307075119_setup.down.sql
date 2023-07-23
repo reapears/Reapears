@@ -20,10 +20,11 @@ DROP TABLE IF EXISTS services.cultivars;
 DROP TABLE IF EXISTS services.cultivar_categories;
 -- DROP TABLE IF EXISTS services.tags;
 
--- DROP TABLE IF EXISTS auth.api_tokens;
+DROP TABLE IF EXISTS auth.api_tokens;
 DROP TABLE IF EXISTS auth.password_reset_tokens;
 DROP TABLE IF EXISTS auth.sessions;
 DROP TABLE IF EXISTS accounts.email_pending_updates;
+DROP TABLE IF EXISTS accounts.account_delete_requests;
 DROP TABLE IF EXISTS accounts.follows;
 DROP TABLE IF EXISTS accounts.phones;
 DROP TABLE IF EXISTS accounts.emails;

@@ -7,33 +7,26 @@ use axum::{
 };
 use serde::Deserialize;
 use time::OffsetDateTime;
-use validator::Validate;
 
 use crate::{
     auth::{Token, TokenHash},
-    endpoint::EndpointRejection,
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
     server::state::ServerState,
     types::ModelID,
 };
 
 /// Email create form
-#[derive(Clone, Debug, Deserialize, Validate)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EmailForm {
-    #[validate(email)]
     pub email: String,
 }
 
-impl EmailForm {
-    // Return (`EmailInsertPendingData`, approve_plaintext, verify_plaintext)
-    #[must_use]
-    pub fn pending_update_data(self) -> (EmailInsertPendingData, String) {
-        let (approve_text, approve_hash) = Token::new_code().into_parts();
-        let values = EmailInsertPendingData::new(self.email, approve_hash);
-        (values, approve_text)
-    }
-}
-
-/// Email insert cleaned data
+/// Email insert cleaned data,
+/// used for account registration.
 #[derive(Debug, Clone)]
 pub struct EmailInsertData {
     pub email: String,
@@ -54,27 +47,8 @@ impl EmailInsertData {
     }
 }
 
-#[async_trait]
-impl<B> FromRequest<ServerState, B> for EmailForm
-where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
-{
-    type Rejection = EndpointRejection;
-
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
-
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
-    }
-}
-
-// ===== Email Pending Updates impls =====
-
 /// Email pending update cleaned data
+/// used for updating email.
 #[derive(Debug, Clone)]
 pub struct EmailInsertPendingData {
     pub id: ModelID,
@@ -97,12 +71,73 @@ impl EmailInsertPendingData {
     }
 }
 
-// ---CodeConfirm---
+impl EmailForm {
+    /// Validates email form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
 
-#[derive(Debug, Clone, Deserialize, Validate)]
+        self.email.validate_email()?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.email = self.email.clean().to_ascii_lowercase();
+    }
+
+    // Return (`EmailInsertPendingData`, approve_plaintext)
+    #[must_use]
+    pub fn pending_update_data(self) -> (EmailInsertPendingData, String) {
+        let (approve_text, approve_hash) = Token::new_code().into_parts();
+        let values = EmailInsertPendingData::new(self.email, approve_hash);
+        (values, approve_text)
+    }
+}
+
+#[async_trait]
+impl<B> FromRequest<ServerState, B> for EmailForm
+where
+    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
+    B: Send + 'static,
+{
+    type Rejection = EndpointRejection;
+
+    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        // Extract data
+        let Json(mut email) = Json::<Self>::from_request(req, state).await?;
+
+        // Validate email form
+        email.validate()?;
+
+        Ok(email)
+    }
+}
+
+// ===== Code ConfirmForm impls =====
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CodeConfirmForm {
-    #[validate(length(equal = 6))] // the length is 6
     pub code: String,
+}
+
+impl CodeConfirmForm {
+    /// Validates email form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.code.validate_len(6, 6, "Invalid code")?;
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.code = self.code.clean();
+    }
 }
 
 #[async_trait]
@@ -114,10 +149,12 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
-        match input.validate() {
-            Ok(()) => Ok(input),
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Extract data
+        let Json(mut code) = Json::<Self>::from_request(req, state).await?;
+
+        // Validate form fields
+        code.validate()?;
+
+        Ok(code)
     }
 }

@@ -8,48 +8,51 @@ use axum::{
 // use tower_http::limit::RequestBodyLimitLayer;
 
 use crate::{
+    features::harvest_subscription::handlers::{
+        harvest_subscription_create, harvest_subscription_delete, harvest_subscription_list,
+        harvest_subscription_update,
+    },
     // files::IMAGE_MAX_SIZE,
     server::state::ServerState,
     services::{
-        farmers::{
-            farm::handlers::{
-                farm_create, farm_delete, farm_detail, farm_list, farm_location_index, farm_update,
+        farmers::farm::handlers::{
+            farm_create, farm_delete, farm_detail, farm_list, farm_location_index,
+            farm_logo_delete, farm_logo_upload, farm_update,
+        },
+        farmers::location::{
+            country::handlers::{country_create, country_delete, country_list, country_update},
+            handlers::{
+                location_create, location_delete, location_detail, location_list, location_update,
             },
-            location::{
-                country::handlers::{country_create, country_delete, country_list, country_update},
-                handlers::{
-                    location_create, location_delete, location_detail, location_list,
-                    location_update,
-                },
-                region::handlers::{region_create, region_delete, region_list, region_update},
+            region::handlers::{region_create, region_delete, region_list, region_update},
+        },
+        farmers::rating::handlers::{
+            farm_rating_create, farm_rating_delete, farm_rating_detail, farm_rating_list,
+            farm_rating_update, farm_ratings,
+        },
+        produce::cultivar::{
+            category::handlers::{
+                cultivar_category_create, cultivar_category_delete, cultivar_category_list,
+                cultivar_category_update,
             },
-            rating::handlers::{
-                farm_rating_create, farm_rating_delete, farm_rating_detail, farm_rating_list,
-                farm_rating_update, farm_ratings,
+            handlers::{
+                cultivar_create, cultivar_delete, cultivar_detail, cultivar_image_delete,
+                cultivar_image_upload, cultivar_index, cultivar_list, cultivar_update,
             },
         },
-        produce::{
-            cultivar::{
-                category::handlers::{
-                    cultivar_category_create, cultivar_category_delete, cultivar_category_list,
-                    cultivar_category_update,
-                },
-                handlers::{
-                    cultivar_create, cultivar_delete, cultivar_detail, cultivar_image_delete,
-                    cultivar_image_upload, cultivar_index, cultivar_list, cultivar_update,
-                },
-            },
-            harvest::handlers::{
-                harvest_create, harvest_delete, harvest_detail, harvest_image_delete,
-                harvest_image_uploads, harvest_list, harvest_update,
-            },
+        produce::harvest::handlers::{
+            harvest_create, harvest_delete, harvest_detail, harvest_image_delete,
+            harvest_image_uploads, harvest_list, harvest_update,
         },
+        produce::harvest_feed,
     },
 };
 
 /// Services routers
 pub fn routers() -> Router<ServerState> {
     Router::new()
+        //Produce
+        .route("/produce", get(harvest_feed))
         // Cultivar
         .route("/cultivars", get(cultivar_list).post(cultivar_create))
         .route(
@@ -91,11 +94,23 @@ pub fn routers() -> Router<ServerState> {
                 // ))
                 .delete(harvest_image_delete),
         )
+        .route(
+            "/harvests/subscription",
+            get(harvest_subscription_list).post(harvest_subscription_create),
+        )
+        .route(
+            "/harvests/subscription/:subscription_id",
+            put(harvest_subscription_update).delete(harvest_subscription_delete),
+        )
         // Farms
         .route("/farms", get(farm_list).post(farm_create))
         .route(
             "/farms/:farm_id",
             get(farm_detail).put(farm_update).delete(farm_delete),
+        )
+        .route(
+            "/farms/:farm_id/logo",
+            post(farm_logo_upload).delete(farm_logo_delete),
         )
         .route(
             "/farms/:farm_id/locations",

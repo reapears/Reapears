@@ -7,11 +7,13 @@ use axum::{
 };
 use serde::Deserialize;
 use time::{Date, OffsetDateTime};
-use validator::Validate;
 
 use crate::{
     auth::FarmerUser,
-    endpoint::{EndpointRejection, EndpointResult},
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
     server::state::ServerState,
     services::farmers::location::forms::{LocationEmbeddedForm, LocationInsertData},
     types::ModelID,
@@ -19,15 +21,14 @@ use crate::{
 
 use super::permissions::check_user_owns_farm;
 
-pub use helpers::validate_farm_id;
-
 /// Farm create form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FarmCreateForm {
-    #[validate(length(min = 1, max = 128))]
     pub name: String,
     pub contact_email: Option<String>,
     pub contact_number: Option<String>,
+    pub founded_at: Option<Date>,
     pub location: LocationEmbeddedForm,
 }
 
@@ -39,11 +40,40 @@ pub struct FarmInsertData {
     pub name: String,
     pub contact_email: Option<String>,
     pub contact_number: Option<String>,
+    pub founded_at: Option<Date>,
     pub location: LocationInsertData,
     pub registered_on: Date,
 }
 
 impl FarmCreateForm {
+    /// Validates farm form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.name
+            .validate_len(0, 32, "Farm name must be at most 128 characters")?;
+
+        if let Some(ref email) = self.contact_email {
+            email.validate_email()?;
+        }
+
+        if let Some(ref phone) = self.contact_number {
+            self.contact_number = Some(phone.validate_phone()?);
+        }
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.name = self.name.clean().to_titlecase();
+        self.contact_email = self
+            .contact_email
+            .as_ref()
+            .map(|email| email.clean().to_ascii_lowercase());
+    }
+
     /// Convert `Self` into `FarmInsertData`
     #[allow(dead_code)]
     #[must_use]
@@ -55,6 +85,7 @@ impl FarmCreateForm {
             name: self.name,
             contact_email: self.contact_email,
             contact_number: self.contact_number,
+            founded_at: self.founded_at,
             location: self.location.data(id),
             registered_on: OffsetDateTime::now_utc().date(),
         }
@@ -70,40 +101,78 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        // Extract data
+        let Json(mut farm) = Json::<Self>::from_request(req, state).await?;
 
-        match input.validate() {
-            Ok(()) => {
-                input.location.validate_form(state).await?;
-                Ok(input)
-            }
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Validate form fields
+        farm.validate()?;
+        farm.location.validate()?;
+
+        Ok(farm)
     }
 }
 
 // ===== Farm Update form impls ======
 
 /// Farm update form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FarmUpdateForm {
-    #[validate(length(min = 1, max = 128))]
     pub name: String,
+    pub contact_email: Option<String>,
+    pub contact_number: Option<String>,
+    pub founded_at: Option<Date>,
 }
 
 /// Farm update cleaned data
 #[derive(Debug, Clone)]
 pub struct FarmUpdateData {
     pub name: String,
+    pub contact_email: Option<String>,
+    pub contact_number: Option<String>,
+    pub founded_at: Option<Date>,
 }
 
 impl From<FarmUpdateForm> for FarmUpdateData {
     fn from(form: FarmUpdateForm) -> Self {
-        Self { name: form.name }
+        Self {
+            name: form.name,
+            contact_number: form.contact_number,
+            contact_email: form.contact_email,
+            founded_at: form.founded_at,
+        }
     }
 }
 
 impl FarmUpdateForm {
+    /// Validates region form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        self.name
+            .validate_len(0, 32, "Farm name must be at most 128 characters")?;
+
+        if let Some(ref email) = self.contact_email {
+            email.validate_email()?;
+        }
+
+        if let Some(ref phone) = self.contact_number {
+            self.contact_number = Some(phone.validate_phone()?);
+        }
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.name = self.name.clean().to_titlecase();
+        self.contact_email = self
+            .contact_email
+            .as_ref()
+            .map(|email| email.clean().to_ascii_lowercase());
+    }
+
     ///  Validate a user has the permissions to update a farm
     async fn authorize_request(
         state: &ServerState,
@@ -123,61 +192,19 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+        // Extract data
         let (mut parts, body) = req.into_parts();
         let user = { FarmerUser::from_parts(&mut parts, state).await? };
         let farm_id = { ModelID::from_request_parts(&mut parts, state).await? };
-        let Json(input) =
+        let Json(mut farm) =
             Json::<Self>::from_request(Request::from_parts(parts, body), state).await?;
+
+        // Validate form fields
+        farm.validate()?;
 
         // Authorize request
         Self::authorize_request(state, user, farm_id).await?;
 
-        match input.validate() {
-            Ok(()) => {
-                // Validate farm id exists
-                let db = state.database.clone();
-                validate_farm_id(farm_id, db).await?;
-                Ok(input)
-            }
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
-    }
-}
-
-mod helpers {
-    use crate::types::ModelID;
-    use crate::{
-        core::server::state::DatabaseConnection,
-        endpoint::{EndpointRejection, EndpointResult},
-    };
-
-    /// Validate `farm_id` exists
-    pub async fn validate_farm_id(id: ModelID, db: DatabaseConnection) -> EndpointResult<()> {
-        match sqlx::query!(
-            r#"
-                SELECT EXISTS(
-                    SELECT 1 FROM services.active_farms farm
-                    WHERE farm.id = $1
-                ) AS "exists!"
-            "#,
-            id.0
-        )
-        .fetch_one(&db.pool)
-        .await
-        {
-            // Returns ok is the farm id exists
-            Ok(row) => {
-                if row.exists {
-                    Ok(())
-                } else {
-                    tracing::error!("Farm id: '{}' does not exists.", id);
-                    Err(EndpointRejection::BadRequest("Farm not found.".into()))
-                }
-            }
-            Err(err) => {
-                tracing::error!("Database error: {}", err);
-                Err(EndpointRejection::internal_server_error())
-            }
-        }
+        Ok(farm)
     }
 }

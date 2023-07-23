@@ -7,6 +7,8 @@ use crate::{
     services::produce::harvest::harvest_max_age, types::ModelID,
 };
 
+use super::db::handle_location_database_error;
+
 /// Delete location from the database
 ///
 /// # Errors
@@ -34,6 +36,9 @@ pub async fn delete_location(
             Ok(())
         }
         Err(err) => {
+            // Handle database constraint error
+            handle_location_database_error(&err)?;
+
             tracing::debug!("Database error, failed to delete location: {}", err);
             Err(err.into())
         }
@@ -70,6 +75,9 @@ pub async fn archive_location(
             Ok(())
         }
         Err(err) => {
+            // Handle database constraint error
+            handle_location_database_error(&err)?;
+
             tracing::error!("Database error, failed to archive location: {}", err);
             Err(err.into())
         }

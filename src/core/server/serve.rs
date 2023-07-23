@@ -5,11 +5,10 @@ use std::time::Duration;
 use axum::{
     error_handling::HandleErrorLayer,
     http::{header, Request},
+    middleware::from_extractor_with_state,
 };
 use tokio::signal;
-
 use tower::{limit::GlobalConcurrencyLimitLayer, ServiceBuilder};
-
 use tower_http::{
     classify::StatusInRangeAsFailures, cors::CorsLayer, request_id::RequestId, trace::TraceLayer,
     ServiceBuilderExt,
@@ -17,13 +16,14 @@ use tower_http::{
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use crate::{
+    auth::ApiAuthentication,
     endpoint::{EndpointRejection, EndpointResult},
     types::ModelID,
 };
 
 use super::{
-    config::Config, server_routers, state::ServerState, CONCURRENCY_LIMIT, SENSITIVE_HEADERS,
-    TIMEOUT_SECS,
+    config::Config, maintenance::server_maintenance, server_routers, state::ServerState,
+    CONCURRENCY_LIMIT, SENSITIVE_HEADERS, TIMEOUT_SECS,
 };
 
 /// Server listener
@@ -50,12 +50,19 @@ pub async fn serve() {
                 .layer(TraceLayer::new(
                     StatusInRangeAsFailures::new(400..=599).into_make_classifier(),
                 ))
+                // Authenticates api endpoints
+                .layer(from_extractor_with_state::<ApiAuthentication, ServerState>(
+                    state.clone(),
+                ))
                 .layer(CorsLayer::permissive()) // Must remove in production ??
                 .set_x_request_id(RequestIdGen)
                 .propagate_header(header::HeaderName::from_static("x-request-id"))
                 .catch_panic(),
         )
-        .with_state(state);
+        .with_state(state.clone());
+
+    // * RUN MAINTENANCE TASK *
+    tokio::spawn(server_maintenance(state));
 
     tracing::debug!("Listening on: {addr}");
     axum::Server::bind(&addr)
@@ -65,13 +72,15 @@ pub async fn serve() {
         .unwrap();
 }
 
-// Tracing initialization impls
+// ==== Tracing impls =====
 
-/// Initializes server tracing subscriber
+/// Initializes tracing for dev environment
+/// that includes console-subscriber
 ///
 /// # Panics
 ///
 /// Panics if failed to install `color_eyre`
+#[cfg(feature = "dev")]
 pub fn tracing_init() {
     color_eyre::install().unwrap();
 
@@ -91,6 +100,25 @@ pub fn tracing_init() {
         // add the console layer to the subscriber
         .with(console_layer)
         // add other layers...
+        .with(filters)
+        .with(format)
+        .init();
+}
+
+/// Initializes tracing for production environment
+#[cfg(not(feature = "dev"))]
+pub fn tracing_init() {
+    // EnvFilter
+    let default_filters = "reapears=trace,tower_http=trace";
+    let filters = EnvFilter::try_from_default_env().unwrap_or_else(|_| default_filters.into());
+
+    // tracing_subscriber::fmt
+    let format = tracing_subscriber::fmt::layer()
+        .with_file(false)
+        .with_target(false)
+        .pretty();
+
+    tracing_subscriber::registry()
         .with(filters)
         .with(format)
         .init();

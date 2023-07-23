@@ -7,23 +7,22 @@ use axum::{
 };
 use serde::Deserialize;
 use time::Date;
-use validator::Validate;
 
-use crate::{endpoint::EndpointRejection, server::state::ServerState};
+use crate::{
+    endpoint::{
+        validators::{TransformString, ValidateString},
+        EndpointRejection, EndpointResult,
+    },
+    server::state::ServerState,
+};
 
 /// User personal info update form
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PersonalInfoUpdateForm {
-    #[validate(length(min = 1, max = 16))]
     pub first_name: Option<String>,
-
-    #[validate(length(min = 1, max = 16))]
     pub last_name: Option<String>,
-
-    #[validate(length(min = 1, max = 6, message = "Invalid gender"))]
     pub gender: Option<String>,
-
     pub date_of_birth: Option<Date>,
 }
 
@@ -47,6 +46,38 @@ impl From<PersonalInfoUpdateForm> for PersonalInfoUpdateData {
     }
 }
 
+impl PersonalInfoUpdateForm {
+    /// Validates personal info form inputs
+    fn validate(&mut self) -> EndpointResult<()> {
+        // Clean the data
+        self.clean_data();
+
+        if let Some(ref first_name) = self.first_name {
+            first_name.validate_len(0, 24, "first name must be at most 24 characters")?;
+        }
+
+        if let Some(ref last_name) = self.last_name {
+            last_name.validate_len(0, 24, "last name must be at most 24 characters")?;
+        }
+
+        if let Some(ref gender) = self.gender {
+            helpers::validate_gender(gender)?;
+        }
+
+        Ok(())
+    }
+
+    /// Clean form data
+    fn clean_data(&mut self) {
+        self.first_name = self
+            .first_name
+            .as_ref()
+            .map(|first_name| first_name.clean());
+        self.last_name = self.last_name.as_ref().map(|last_name| last_name.clean());
+        self.gender = self.gender.as_ref().map(|gender| gender.clean());
+    }
+}
+
 #[async_trait]
 impl<B> FromRequest<ServerState, B> for PersonalInfoUpdateForm
 where
@@ -56,19 +87,17 @@ where
     type Rejection = EndpointRejection;
 
     async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
-        let Json(input) = Json::<Self>::from_request(req, state).await?;
+        // Extract data
+        let Json(mut personal_info) = Json::<Self>::from_request(req, state).await?;
 
-        match input.validate() {
-            Ok(()) => {
-                if let Some(ref gender) = input.gender {
-                    helpers::validate_gender(gender)?;
-                }
-                Ok(input)
-            }
-            Err(err) => Err(EndpointRejection::BadRequest(err.to_string().into())),
-        }
+        // Validate form fields
+        personal_info.validate()?;
+
+        Ok(personal_info)
     }
 }
+
+// ===== Helpers impls =====
 
 mod helpers {
     use crate::endpoint::{EndpointRejection, EndpointResult};

@@ -1,7 +1,13 @@
 //! Harvest database impl
 
+use futures_util::stream::{Stream, TryStreamExt};
+
 use crate::{
-    error::ServerResult, server::state::DatabaseConnection, types::ModelID, types::Pagination,
+    endpoint::EndpointRejection,
+    error::{ServerError, ServerResult},
+    server::state::DatabaseConnection,
+    types::ModelID,
+    types::Pagination,
 };
 
 use super::{
@@ -11,6 +17,67 @@ use super::{
 };
 
 impl Harvest {
+    /// Fetches a stream of harvest records from the database
+    #[tracing::instrument(name = "Fetch HarvestStream", skip(db))]
+    pub async fn stream<'a>(
+        db: &'a DatabaseConnection,
+    ) -> impl Stream<Item = Result<HarvestIndex, sqlx::Error>> + 'a {
+        //NB! Don't forget to select harvests from services.active_harvests
+        let today = time::OffsetDateTime::now_utc().date();
+        sqlx::query!(
+            r#"
+                SELECT harvest.id AS "harvest_id!",
+                    harvest.cultivar_id,
+                    harvest.price AS "harvest_price!",
+                    harvest.available_at AS "harvest_available_at!",
+                    harvest.images AS harvest_images,
+                    cultivar.name AS cultivar_name,
+                    cultivar.image AS cultivar_image, 
+                    farm.name AS farm_name,
+                    location_.place_name AS location_place_name,
+                    location_.coords AS location_coords,
+                    region.name AS "location_region?",
+                    country.name AS location_country,
+                    subscription.amount AS "boost_amount?",
+                    subscription.expires_at AS "subscription_expires_at?"
+                FROM services.active_harvests harvest
+                LEFT JOIN services.cultivars cultivar
+                    ON harvest.cultivar_id = cultivar.id
+                LEFT JOIN services.locations location_
+                    ON harvest.location_id = location_.id
+                LEFT JOIN services.farms farm
+                    ON location_.farm_id = farm.id
+                LEFT JOIN services.regions region
+                    ON location_.region_id = region.id
+                LEFT JOIN services.countries country
+                    ON location_.country_id = country.id
+
+                LEFT JOIN features.harvest_subscriptions subscription
+                    ON harvest.id  = subscription.harvest_id
+
+                ORDER BY subscription.amount DESC NULLS LAST,
+                    greatest(AGE(harvest.available_at), -AGE(harvest.available_at));
+            "#,
+        )
+        .fetch(&db.pool)
+        .map_ok(move |rec| {
+            HarvestIndex::from_row(
+                rec.harvest_id.into(),
+                rec.harvest_price,
+                rec.harvest_available_at,
+                rec.harvest_images,
+                rec.cultivar_name,
+                rec.cultivar_image,
+                rec.location_place_name,
+                rec.location_region,
+                rec.location_country,
+                rec.location_coords,
+                rec.farm_name,
+                calc_boost_amount(rec.boost_amount, rec.subscription_expires_at, today),
+            )
+        })
+    }
+
     /// Fetches harvest records from the database
     #[tracing::instrument(name = "Fetch HarvestList", skip(db))]
     pub async fn records(pg: Pagination, db: DatabaseConnection) -> ServerResult<HarvestList> {
@@ -24,10 +91,14 @@ impl Harvest {
                     harvest.available_at AS "harvest_available_at!",
                     harvest.images AS harvest_images,
                     cultivar.name AS cultivar_name,
+                    cultivar.image AS cultivar_image, 
                     farm.name AS farm_name,
                     location_.place_name AS location_place_name,
+                    location_.coords AS location_coords,
                     region.name AS "location_region?",
-                    country.name AS location_country
+                    country.name AS location_country,
+                    subscription.amount AS "boost_amount?",
+                    subscription.expires_at AS "subscription_expires_at?"
                 FROM services.active_harvests harvest
                 LEFT JOIN services.cultivars cultivar
                     ON harvest.cultivar_id = cultivar.id
@@ -39,7 +110,10 @@ impl Harvest {
                     ON location_.region_id = region.id
                 LEFT JOIN services.countries country
                     ON location_.country_id = country.id
-            
+
+                LEFT JOIN features.harvest_subscriptions subscription
+                    ON harvest.id  = subscription.harvest_id
+
                 ORDER BY harvest.created_at
                 LIMIT $1
                 OFFSET $2;
@@ -51,6 +125,7 @@ impl Harvest {
         .await
         {
             Ok(records) => {
+                let today = time::OffsetDateTime::now_utc().date();
                 let harvests = records
                     .into_iter()
                     .map(|rec| {
@@ -60,10 +135,13 @@ impl Harvest {
                             rec.harvest_available_at,
                             rec.harvest_images,
                             rec.cultivar_name,
+                            rec.cultivar_image,
                             rec.location_place_name,
                             rec.location_region,
                             rec.location_country,
+                            rec.location_coords,
                             rec.farm_name,
+                            calc_boost_amount(rec.boost_amount, rec.subscription_expires_at, today),
                         )
                     })
                     .collect();
@@ -93,10 +171,12 @@ impl Harvest {
                     harvest.images AS harvest_images,
                     harvest.created_at AS "harvest_created_at!",
                     cultivar.name AS cultivar_name,
+                    cultivar.image AS cultivar_image, 
                     farm.id AS farm_id,
                     farm.name AS farm_name,
                     location_.id AS location_id,
                     location_.place_name AS location_place_name,
+                    location_.coords AS location_coords,
                     region.name AS "location_region?",
                     country.name AS location_country,
                     user_.id AS farm_owner_id,
@@ -137,10 +217,12 @@ impl Harvest {
                     rec.harvest_created_at,
                     rec.cultivar_id.into(),
                     rec.cultivar_name,
+                    rec.cultivar_image,
                     rec.location_id.into(),
                     rec.location_place_name,
                     rec.location_region,
                     rec.location_country,
+                    rec.location_coords,
                     rec.farm_id.into(),
                     rec.farm_name,
                     rec.farm_owner_id.into(),
@@ -201,6 +283,9 @@ impl Harvest {
                 Ok(harvest.id)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_harvest_database_error(&err)?;
+
                 tracing::error!("Database error, failed to insert harvest: {}", err);
                 Err(err.into())
             }
@@ -226,8 +311,8 @@ impl Harvest {
                     updated_at = $7
                 WHERE harvest.id = $8;
             "#,
-            harvest.cultivar_id.map(|id| id.0),
-            harvest.location_id.map(|id| id.0),
+            harvest.cultivar_id.0,
+            harvest.location_id.0,
             harvest.price,
             harvest.r#type,
             harvest.description,
@@ -243,6 +328,9 @@ impl Harvest {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_harvest_database_error(&err)?;
+
                 tracing::error!("Database error, failed to update harvest: {}", err);
                 Err(err.into())
             }
@@ -302,6 +390,9 @@ impl Harvest {
                 Ok(rec.old_images)
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_harvest_database_error(&err)?;
+
                 tracing::error!(
                     "Database error, failed to insert harvest image-paths: {}",
                     err
@@ -342,9 +433,75 @@ impl Harvest {
                 Ok(())
             }
             Err(err) => {
+                // Handle database constraint error
+                handle_harvest_database_error(&err)?;
+
                 tracing::error!("Database error, failed to delete image-paths: {}", err);
                 Err(err.into())
             }
         }
     }
+}
+
+/// Get boost amount
+#[must_use]
+fn calc_boost_amount(
+    boost_amount: Option<rust_decimal::Decimal>,
+    expires_at: Option<time::Date>,
+    today: time::Date,
+) -> rust_decimal::Decimal {
+    if expires_at >= Some(today) {
+        boost_amount.unwrap_or_else(|| 0.into())
+    } else {
+        0.into()
+    }
+}
+
+/// Handle harvest database constraints errors
+#[allow(clippy::cognitive_complexity)]
+pub fn handle_harvest_database_error(err: &sqlx::Error) -> ServerResult<()> {
+    if let sqlx::Error::Database(db_err) = err {
+        // Handle db unique constraints
+        if db_err.is_unique_violation() {
+            tracing::error!(
+                "Database error, harvest with the same cultivar name already exists. {:?}",
+                err
+            );
+            return Err(ServerError::rejection(EndpointRejection::Conflict(
+                "Harvest with the same cultivar name already exists.".into(),
+            )));
+        }
+        // Handle db foreign key constraints
+        if db_err.is_foreign_key_violation() {
+            if let Some(constraint) = db_err.constraint() {
+                if constraint == "harvests_cultivar_id_fkey" {
+                    tracing::error!("Database error, cultivar not found. {:?}", err);
+                    return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                        "Cultivar not found.".into(),
+                    )));
+                }
+
+                if constraint == "harvests_location_id_fkey" {
+                    tracing::error!("Database error, location not found. {:?}", err);
+                    return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                        "Location not found.".into(),
+                    )));
+                }
+            }
+            tracing::error!("Database error, location or cultivar not found. {:?}", err);
+            return Err(ServerError::rejection(EndpointRejection::BadRequest(
+                "Location or cultivar not found.".into(),
+            )));
+        }
+    }
+
+    // For updates only
+    if matches!(err, &sqlx::Error::RowNotFound) {
+        tracing::error!("Database error, harvest not found. {:?}", err);
+        return Err(ServerError::rejection(EndpointRejection::NotFound(
+            "Harvest not found.".into(),
+        )));
+    }
+
+    Ok(())
 }

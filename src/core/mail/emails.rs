@@ -7,45 +7,45 @@ use crate::error::ServerResult;
 // ====== Email Templates ======
 
 /// An email to user to confirm their email on signup.
-pub const ACCOUNT_CONFIRMATION_EMAIL_HTML: &str = include_str!(concat!(
+const ACCOUNT_CONFIRMATION_EMAIL_HTML: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/static/templates/emails/confirm_account.html"
 ));
 /// An email to user to confirm their email on signup.
-pub const ACCOUNT_CONFIRMATION_EMAIL_TEXT: &str = include_str!(concat!(
+const ACCOUNT_CONFIRMATION_EMAIL_TEXT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/static/templates/emails/confirm_account.txt"
 ));
 
 /// An email to user to approve email change.
-pub const APPROVE_EMAIL_CHANGE_EMAIL_HTML: &str = include_str!(concat!(
+const APPROVE_EMAIL_CHANGE_EMAIL_HTML: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/static/templates/emails/approve_email_change.html"
 ));
 /// An email to user to approve email change.
-pub const APPROVE_EMAIL_CHANGE_EMAIL_TEXT: &str = include_str!(concat!(
+const APPROVE_EMAIL_CHANGE_EMAIL_TEXT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/static/templates/emails/approve_email_change.txt"
 ));
 
 /// An email to user to reset their password on forgot password.
-pub const PASSWORD_RESET_EMAIL_HTML: &str = include_str!(concat!(
+const PASSWORD_RESET_EMAIL_HTML: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/static/templates/emails/password_reset.html"
 ));
 /// An email to user to reset their password on forgot password.
-pub const PASSWORD_RESET_EMAIL_TEXT: &str = include_str!(concat!(
+const PASSWORD_RESET_EMAIL_TEXT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/static/templates/emails/password_reset.txt"
 ));
 
 /// An email to user to verify the new email they want to change to.
-pub const VERIFY_NEW_EMAIL_CHANGE_EMAIL_HTML: &str = include_str!(concat!(
+const VERIFY_NEW_EMAIL_CHANGE_EMAIL_HTML: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/static/templates/emails/verify_new_email.html"
 ));
 /// An email to user to verify the new email they want to change to.
-pub const VERIFY_NEW_EMAIL_CHANGE_EMAIL_TEXT: &str = include_str!(concat!(
+const VERIFY_NEW_EMAIL_CHANGE_EMAIL_TEXT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/static/templates/emails/verify_new_email.txt"
 ));

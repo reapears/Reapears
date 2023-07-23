@@ -1,9 +1,4 @@
 [build]
 rustflags = ["--cfg", "tokio_unstable", "--cfg", "uuid_unstable"]
-# rustflags = ["--cfg", "tokio_unstable"]
-
 
 # rustc-wrapper = "sccache"
-
-[registries.crates-io]
-protocol = "sparse"

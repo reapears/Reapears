@@ -12,8 +12,7 @@ CREATE SCHEMA IF NOT EXISTS auth;
 -- Accounts(Schema) Tables
 
 -- Users table
-DROP TABLE IF EXISTS accounts.users;
-CREATE TABLE accounts.users(
+CREATE TABLE IF NOT EXISTS accounts.users(
     id uuid PRIMARY KEY,
     first_name text NOT NULL,
     last_name text,
@@ -32,8 +31,7 @@ CREATE TABLE accounts.users(
 );
 
 -- Users profile table
-DROP TABLE IF EXISTS accounts.user_profiles;
-CREATE TABLE accounts.user_profiles(
+CREATE TABLE IF NOT EXISTS accounts.user_profiles(
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     photo text UNIQUE,
     about text NOT NULL DEFAULT '',
@@ -43,8 +41,7 @@ CREATE TABLE accounts.user_profiles(
 
 
 -- User emails table
-DROP TABLE IF EXISTS accounts.emails;
-CREATE TABLE accounts.emails(
+CREATE TABLE IF NOT EXISTS accounts.emails(
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     email text UNIQUE NOT NULL,
     verified boolean NOT NULL,
@@ -55,8 +52,7 @@ CREATE TABLE accounts.emails(
 
 
 -- User phones table
-DROP TABLE IF EXISTS accounts.phones;
-CREATE TABLE accounts.phones(
+CREATE TABLE IF NOT EXISTS accounts.phones(
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     phone text UNIQUE NOT NULL,
     verified boolean NOT NULL,
@@ -66,16 +62,22 @@ CREATE TABLE accounts.phones(
 );
 
 -- DROP TABLE IF EXISTS accounts.follows;
--- CREATE TABLE accounts.follows(
+-- CREATE TABLE IF NOT EXISTS accounts.follows(
 --     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
 --     follows_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
 --     PRIMARY KEY(user_id, follows_id)
 -- );
 
+-- Record users that requested their accounts to be deleted,
+-- the user account will be deleted after 30 days the request issued.
+CREATE TABLE IF NOT EXISTS accounts.account_delete_requests(
+    user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
+    delete_request_at timestamptz NOT NULL,
+    PRIMARY KEY(user_id)
+);
 
 -- Temporary stores the new email the user want to change to
-DROP TABLE IF EXISTS accounts.email_pending_updates;
-CREATE TABLE accounts.email_pending_updates(
+CREATE TABLE IF NOT EXISTS accounts.email_pending_updates(
     id uuid PRIMARY KEY,
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE NOT NULL UNIQUE,
     new_email text NOT NULL,
@@ -90,8 +92,7 @@ CREATE TABLE accounts.email_pending_updates(
 -- Auth(Schema) Tables
 
 -- User sessions table
-DROP TABLE IF EXISTS auth.sessions;
-CREATE TABLE auth.sessions(
+CREATE TABLE IF NOT EXISTS auth.sessions(
     id uuid PRIMARY KEY,
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     user_agent text NOT NULL,
@@ -102,8 +103,7 @@ CREATE TABLE auth.sessions(
 
 -- Stores password reset token, send to the user email 
 -- on password forgot
-DROP TABLE IF EXISTS auth.password_reset_tokens;
-CREATE TABLE auth.password_reset_tokens(
+CREATE TABLE IF NOT EXISTS auth.password_reset_tokens(
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     token bytea UNIQUE NOT NULL, -- token hash
     token_generated_at timestamptz NOT NULL,
@@ -112,8 +112,7 @@ CREATE TABLE auth.password_reset_tokens(
 
 
 -- Stores api keys for authenticating frontend apps or users
-DROP TABLE IF EXISTS auth.api_tokens;
-CREATE TABLE auth.api_tokens(
+CREATE TABLE IF NOT EXISTS auth.api_tokens(
     id SERIAL PRIMARY KEY,
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     token bytea NOT NULL UNIQUE,
@@ -126,22 +125,20 @@ CREATE TABLE auth.api_tokens(
 -- Services(Schema) Tables
 
 -- DROP TABLE IF EXISTS services.tags;
--- CREATE TABLE services.tags(
+-- CREATE TABLE IF NOT EXISTS services.tags(
 --     id uuid PRIMARY KEY,
 --     label_id uuid REFERENCES models.content_types (id) ON DELETE CASCADE NOT NULL,
 --     name text NOT NULL UNIQUE
 -- );
 
 
-DROP TABLE IF EXISTS services.cultivar_categories;
-CREATE TABLE services.cultivar_categories(
+CREATE TABLE IF NOT EXISTS services.cultivar_categories(
     id uuid PRIMARY KEY,
     name text NOT NULL UNIQUE
 );
 
 
-DROP TABLE IF EXISTS services.cultivars;
-CREATE TABLE services.cultivars(
+CREATE TABLE IF NOT EXISTS services.cultivars(
     id uuid PRIMARY KEY,
     category_id uuid REFERENCES services.cultivar_categories (id),
     name text NOT NULL UNIQUE,
@@ -150,19 +147,17 @@ CREATE TABLE services.cultivars(
 
 
 -- DROP TABLE IF EXISTS services.cultivar_tags;
--- CREATE TABLE services.cultivar_tags(
+-- CREATE TABLE IF NOT EXISTS services.cultivar_tags(
 --     cultivar_id uuid REFERENCES services.cultivars (id) ON DELETE CASCADE,
 --     tag_id uuid REFERENCES services.tags (id) ON DELETE CASCADE,
 --     PRIMARY KEY(cultivar_id, tag_id)
 -- );
 
 
-DROP TABLE IF EXISTS services.farms;
-CREATE TABLE services.farms(
+CREATE TABLE IF NOT EXISTS services.farms(
     id uuid PRIMARY KEY,
-    -- Owner id can be null because on user delete
+    -- Owner id can be null since on user delete
     -- it will be archived and the owner_id will be set to null
-    -- if it has archived harvests
     owner_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     name text NOT NULL,
     logo text,
@@ -176,15 +171,13 @@ CREATE TABLE services.farms(
 );
 
 
-DROP TABLE IF EXISTS services.countries;
-CREATE TABLE services.countries(
+CREATE TABLE IF NOT EXISTS services.countries(
     id uuid PRIMARY KEY,
     name text NOT NULL UNIQUE
 );
 
 
-DROP TABLE IF EXISTS services.regions;
-CREATE TABLE services.regions(
+CREATE TABLE IF NOT EXISTS services.regions(
     id uuid PRIMARY KEY,
     country_id uuid REFERENCES services.countries (id) ON DELETE CASCADE,
     name text NOT NULL,
@@ -193,8 +186,7 @@ CREATE TABLE services.regions(
 
 
 -- Farm's locations table
-DROP TABLE IF EXISTS services.locations;
-CREATE TABLE services.locations(
+CREATE TABLE IF NOT EXISTS services.locations(
     id uuid PRIMARY KEY,
     farm_id uuid REFERENCES services.farms (id) ON DELETE CASCADE NOT NULL,
     place_name text NOT NULL,
@@ -209,20 +201,21 @@ CREATE TABLE services.locations(
 
 
 -- Farm's rating table
-DROP TABLE IF EXISTS services.farm_ratings;
-CREATE TABLE services.farm_ratings(
+CREATE TABLE IF NOT EXISTS services.farm_ratings(
     id uuid PRIMARY KEY,
     author_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     farm_id uuid REFERENCES services.farms (id) ON DELETE CASCADE,
     grade integer NOT NULL CHECK (grade > 0 AND grade <= 5), -- grade must be either 1, 2, 3, 4, or 5.
     comment text,
+    -- reply_to uuid
+    -- thread_id uuid
     updated_at timestamptz,
     created_at timestamptz NOT NULL
 );
 
 
 -- DROP TABLE IF EXISTS services.farm_tags;
--- CREATE TABLE services.farm_tags(
+-- CREATE TABLE IF NOT EXISTS services.farm_tags(
 --     farm_id uuid REFERENCES services.farms (id) ON DELETE CASCADE,
 --     tag_id uuid REFERENCES services.tags (id) ON DELETE CASCADE,
 --     PRIMARY KEY(farm_id, tag_id)
@@ -230,15 +223,14 @@ CREATE TABLE services.farm_ratings(
 
 
 -- DROP TABLE IF EXISTS services.location_tags;
--- CREATE TABLE services.location_tags(
+-- CREATE TABLE IF NOT EXISTS services.location_tags(
 --     location_id uuid REFERENCES services.locations (id) ON DELETE CASCADE,
 --     tag_id uuid REFERENCES services.tags (id) ON DELETE CASCADE,
 --     PRIMARY KEY(location_id, tag_id)
 -- );
 
 -- Harvest listings table
-DROP TABLE IF EXISTS services.harvests;
-CREATE TABLE services.harvests(
+CREATE TABLE IF NOT EXISTS services.harvests(
     id uuid PRIMARY KEY,
     cultivar_id uuid REFERENCES services.cultivars (id) NOT NULL,
     location_id uuid REFERENCES services.locations (id) NOT NULL,
@@ -257,7 +249,7 @@ CREATE TABLE services.harvests(
 
 -- -- User harvests `wishlists`
 -- DROP TABLE IF EXISTS services.harvests_wishlist;
--- CREATE TABLE services.harvests_wishlist(
+-- CREATE TABLE IF NOT EXISTS services.harvests_wishlist(
 --     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
 --     harvest_id uuid REFERENCES services.harvests (id) ON DELETE CASCADE,
 --     created_at timestamptz NOT NULL,
@@ -265,32 +257,41 @@ CREATE TABLE services.harvests(
 -- );
 
 
--- -- Direct Messages(Shema) tables ??
-DROP TABLE IF EXISTS features.direct_messages;
-CREATE TABLE features.direct_messages(
+-- ===== Features-Schema =====
+
+-- Harvest subscription
+CREATE TABLE IF NOT EXISTS features.harvest_subscriptions(
     id uuid PRIMARY KEY,
-    sender_id uuid REFERENCES accounts.users (id),
-    receiver_id uuid REFERENCES accounts.users (id),
+    harvest_id uuid REFERENCES services.harvests (id) ON DELETE CASCADE NOT NULL UNIQUE,
+    amount decimal NOT NULL,
+    expires_at date NOT NULL,
+    created_at timestamptz NOT NULL
+);
+
+
+-- Direct Messages tables
+CREATE TABLE IF NOT EXISTS features.direct_messages(
+    id uuid PRIMARY KEY,
+    sender_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE NOT NULL,
+    receiver_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE NOT NULL,
     content text NOT NULL,
     sent_at timestamptz NOT NULL
 );
 
 
-DROP TABLE IF EXISTS features.message_status;
-CREATE TABLE features.message_status(
-    id uuid PRIMARY KEY,
-    user_id uuid REFERENCES accounts.users (id),
-    message_id uuid REFERENCES features.direct_messages (id),
-    is_author boolean,
+CREATE TABLE IF NOT EXISTS features.message_status(
+    message_id uuid REFERENCES features.direct_messages (id) ON DELETE CASCADE,
     is_read boolean NOT NULL,
-    is_deleted boolean NOT NULL,
     read_at timestamptz,
-    deleted_at timestamptz,
-    UNIQUE(user_id, message_id)
+    sender_has_deleted boolean NOT NULL,
+    receiver_has_deleted boolean NOT NULL,
+    sender_deleted_at timestamptz,
+    receiver_deleted_at timestamptz,
+    PRIMARY KEY(message_id)
 );
 
 
--- VIEWS
+-- ===== VIEWS =====
 
 DROP VIEW IF EXISTS services.active_locations;
 CREATE VIEW services.active_locations AS (
