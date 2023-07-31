@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT harvest.images\n            FROM services.active_harvests harvest\n\n            WHERE harvest.location_id IN (\n                SELECT location_.id\n                FROM services.active_locations location_\n                WHERE location_.farm_id = $1\n            )\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "images",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "3217dbcc1693305e357aebf4cd768fcc04672070d24728d3f245cd2d6e9ab85e"
+}

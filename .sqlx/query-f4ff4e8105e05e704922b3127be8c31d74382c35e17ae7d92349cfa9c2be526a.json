@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO services.locations(\n                    id, \n                    farm_id, \n                    place_name, \n                    region_id, \n                    country_id, \n                    description, \n                    coords,\n                    deleted,\n                    created_at\n                )\n                 VALUES($1, $2, $3, $4, $5, $6, $7, false, $8);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f4ff4e8105e05e704922b3127be8c31d74382c35e17ae7d92349cfa9c2be526a"
+}

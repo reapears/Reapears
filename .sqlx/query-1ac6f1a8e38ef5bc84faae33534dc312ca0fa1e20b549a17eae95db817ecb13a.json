@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM services.farm_ratings farm_rating\n                    WHERE farm_rating.id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1ac6f1a8e38ef5bc84faae33534dc312ca0fa1e20b549a17eae95db817ecb13a"
+}

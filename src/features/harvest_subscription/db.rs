@@ -1,4 +1,4 @@
-//! Cultivar category database impl
+//! Harvest subscription database impl
 
 use crate::{
     endpoint::EndpointRejection,

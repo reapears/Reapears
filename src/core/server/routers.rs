@@ -77,25 +77,57 @@
 
 */
 
+use std::path::Path;
+
 use axum::{
-    http::StatusCode,
+    http::{
+        header::{self, HeaderValue},
+        StatusCode,
+    },
+    routing::MethodRouter,
     routing::{get, get_service},
     Router,
 };
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{services::ServeDir, set_header::SetResponseHeader};
 
-use super::state::ServerState;
 use crate::{
     endpoint::EndpointResult,
-    settings::{CULTIVAR_UPLOAD_DIR, FILE_NOT_FOUND_PATH, HARVEST_UPLOAD_DIR, USER_UPLOAD_DIR},
+    settings::{
+        CULTIVAR_UPLOAD_DIR, HARVEST_UPLOAD_DIR, USER_UPLOAD_DIR, WEB_APP_ASSETS_DIR,
+        WEB_APP_BUILD_DIR,
+    },
 };
+
+use super::state::ServerState;
 
 mod accounts;
 mod services;
 
+#[allow(clippy::declare_interior_mutable_const)]
+const MAX_AGE_ONE_DAY: HeaderValue = HeaderValue::from_static("public, max-age=86400");
+#[allow(clippy::declare_interior_mutable_const)]
+const MAX_AGE_ONE_YEAR: HeaderValue = HeaderValue::from_static("public, max-age=31536000");
+
 pub fn server_routers() -> Router<ServerState> {
+    assert!(
+        Path::new(WEB_APP_BUILD_DIR).exists(),
+        "Web app not build. expected at {:?}",
+        Path::new(WEB_APP_BUILD_DIR)
+    );
+
+    let web_app = serve_dir(WEB_APP_BUILD_DIR, MAX_AGE_ONE_DAY);
+    let assets = serve_dir(WEB_APP_ASSETS_DIR, MAX_AGE_ONE_YEAR);
+
     Router::new()
+        .fallback_service(web_app)
+        .nest_service("/assets", assets)
         .route("/health-check", get(health_check))
+        .nest("/api/v1", api_v1_router())
+}
+
+/// Api version one routers
+fn api_v1_router() -> Router<ServerState> {
+    Router::new()
         .merge(services::routers())
         .merge(accounts::routers())
         .merge(pictures_router())
@@ -107,22 +139,31 @@ async fn health_check() -> EndpointResult<StatusCode> {
     Ok(StatusCode::OK)
 }
 
+/// Sets up `ServeDir` service
+fn serve_dir(path: impl AsRef<Path>, max_age: HeaderValue) -> MethodRouter {
+    let files = ServeDir::new(path).precompressed_gzip();
+    let with_caching = SetResponseHeader::if_not_present(files, header::CACHE_CONTROL, max_age);
+    get_service(with_caching)
+}
+
+/// Picture routes
 fn pictures_router() -> Router<ServerState> {
-    let cultivar_dir =
-        get_service(ServeDir::new(CULTIVAR_UPLOAD_DIR).not_found_service(file_not_found()));
-
-    let harvest_dir =
-        get_service(ServeDir::new(HARVEST_UPLOAD_DIR).not_found_service(file_not_found()));
-
-    let user_dir = get_service(ServeDir::new(USER_UPLOAD_DIR).not_found_service(file_not_found()));
-
     Router::new()
-        .nest_service("/cultivars/p", cultivar_dir)
-        .nest_service("/harvests/p", harvest_dir)
-        .nest_service("/account/users/photo", user_dir)
+        .nest_service(
+            "/cultivars/p",
+            get_service(serve_dir(CULTIVAR_UPLOAD_DIR, MAX_AGE_ONE_DAY)),
+        )
+        .nest_service(
+            "/harvests/p",
+            get_service(serve_dir(HARVEST_UPLOAD_DIR, MAX_AGE_ONE_DAY)),
+        )
+        .nest_service(
+            "/account/users/photo",
+            get_service(serve_dir(USER_UPLOAD_DIR, MAX_AGE_ONE_DAY)),
+        )
 }
 
-/// File not found error response
-fn file_not_found() -> ServeFile {
-    ServeFile::new(FILE_NOT_FOUND_PATH)
-}
+// /// File not found error response
+// fn file_not_found() -> ServeFile {
+//     ServeFile::new(FILE_NOT_FOUND_PATH)
+// }

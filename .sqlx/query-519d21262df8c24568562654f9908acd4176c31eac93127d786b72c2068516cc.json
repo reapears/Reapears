@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE features.message_status status\n                    SET sender_has_deleted = TRUE,\n                    sender_deleted_at = $1\n                WHERE status.message_id = $2;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "519d21262df8c24568562654f9908acd4176c31eac93127d786b72c2068516cc"
+}

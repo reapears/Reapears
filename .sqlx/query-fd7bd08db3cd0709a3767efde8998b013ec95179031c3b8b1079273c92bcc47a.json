@@ -1,0 +1,84 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT farm_rating.id AS farm_rating_id,\n                    farm_rating.grade AS farm_rating_grade,\n                    farm_rating.comment AS farm_rating_comment,\n                    farm_rating.updated_at AS \"farm_rating_updated_at?\",\n                    farm_rating.created_at AS farm_rating_created_at,\n                    farm.id AS \"farm_id!\",\n                    farm.name AS \"farm_name!\",\n                    user_.id AS user_id,\n                    user_.first_name AS user_first_name,\n                    user_.last_name AS user_last_name,\n                    user_profile.photo AS user_photo\n                FROM services.farm_ratings farm_rating\n                LEFT JOIN services.active_farms farm\n                    ON farm_rating.farm_id = farm.id\n                LEFT JOIN accounts.users user_\n                    ON farm_rating.author_id = user_.id\n                LEFT JOIN accounts.user_profiles user_profile\n                    On farm_rating.author_id = user_profile.user_id\n                \n                WHERE farm.id = $1\n                ORDER BY farm_rating.created_at\n                LIMIT $2\n                OFFSET $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "farm_rating_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "farm_rating_grade",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "farm_rating_comment",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "farm_rating_updated_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "farm_rating_created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "farm_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "farm_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_first_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "user_last_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "user_photo",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "fd7bd08db3cd0709a3767efde8998b013ec95179031c3b8b1079273c92bcc47a"
+}

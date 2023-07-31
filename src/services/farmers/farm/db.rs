@@ -12,7 +12,7 @@ use crate::{
     server::state::DatabaseConnection,
     services::{
         farmers::location::models::{Location, LocationIndex},
-        produce::harvest::{delete_harvest_photos_list, models::HarvestIndex},
+        produce::harvest::{delete_harvest_photos, models::HarvestIndex},
     },
     types::ModelID,
     types::{ModelIdentifier, ModelIndex, Pagination},
@@ -463,7 +463,7 @@ impl Farm {
         tracing::debug!("Farm::delete, transaction committed successfully.");
 
         // Delete active harvest images
-        delete_harvest_photos_list(image_paths).await;
+        tokio::spawn(async move { delete_harvest_photos(image_paths.into_iter().flatten()).await });
 
         Ok(())
     }

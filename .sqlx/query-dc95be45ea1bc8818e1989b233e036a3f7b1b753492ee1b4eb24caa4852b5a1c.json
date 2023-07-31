@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE services.harvests harvest\n            SET finished = true,\n                images = NULL,\n                finished_at = $1\n            WHERE harvest.id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc95be45ea1bc8818e1989b233e036a3f7b1b753492ee1b4eb24caa4852b5a1c"
+}

@@ -7,7 +7,7 @@ use axum::{
 
 use crate::{
     auth::{AdminUser, CurrentUser, SuperUser},
-    endpoint::{EndpointRejection, EndpointResult},
+    endpoint::EndpointResult,
     server::state::DatabaseConnection,
     types::ModelID,
 };
@@ -23,10 +23,8 @@ pub async fn harvest_subscription_list(
     _: AdminUser,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<HarvestSubscriptionList>> {
-    HarvestSubscription::records(db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |subscriptions| Ok(Json(subscriptions)),
-    )
+    let subscriptions = HarvestSubscription::records(db).await?;
+    Ok(Json(subscriptions))
 }
 
 /// Handles the `GET /account/harvests-subscriptions` route.
@@ -35,12 +33,8 @@ pub async fn user_harvest_subscriptions(
     user: CurrentUser,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<HarvestSubscriptionList>> {
-    HarvestSubscription::user_records(user.id, db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |subscriptions| Ok(Json(subscriptions)),
-        )
+    let subscriptions = HarvestSubscription::user_records(user.id, db).await?;
+    Ok(Json(subscriptions))
 }
 
 /// Handles the `POST /harvests/subscription` route.
@@ -50,12 +44,8 @@ pub async fn harvest_subscription_create(
     State(db): State<DatabaseConnection>,
     form: HarvestSubscriptionForm,
 ) -> EndpointResult<StatusCode> {
-    HarvestSubscription::insert(form.into(), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_id| Ok(StatusCode::CREATED),
-        )
+    HarvestSubscription::insert(form.into(), db).await?;
+    Ok(StatusCode::CREATED)
 }
 
 /// Handles the `PUT /harvests/subscription` route.
@@ -66,12 +56,8 @@ pub async fn harvest_subscription_update(
     State(db): State<DatabaseConnection>,
     form: HarvestSubscriptionForm,
 ) -> EndpointResult<StatusCode> {
-    HarvestSubscription::update(subscription_id, form.into(), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
+    HarvestSubscription::update(subscription_id, form.into(), db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `DELETE /harvests/subscription` route.
@@ -81,10 +67,6 @@ pub async fn harvest_subscription_delete(
     subscription_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    HarvestSubscription::delete(subscription_id, db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::NO_CONTENT),
-        )
+    HarvestSubscription::delete(subscription_id, db).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

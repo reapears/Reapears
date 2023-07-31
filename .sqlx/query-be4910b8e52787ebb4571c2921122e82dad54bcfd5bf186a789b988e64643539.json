@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM features.harvest_subscriptions subscription\n                WHERE subscription.id = $1\n           ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be4910b8e52787ebb4571c2921122e82dad54bcfd5bf186a789b988e64643539"
+}

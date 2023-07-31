@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT message.sender_id,\n                message.receiver_id,\n                status.sender_has_deleted,\n                status.receiver_has_deleted\n            FROM features.direct_messages message\n            LEFT JOIN features.message_status status\n                on message.id = status.message_id\n\n            WHERE message.id = $1;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sender_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "receiver_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "sender_has_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "receiver_has_deleted",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f1424601c0aac97132c7dcf7c5b779f41aa1b764f99d3207d4da154715f747c1"
+}

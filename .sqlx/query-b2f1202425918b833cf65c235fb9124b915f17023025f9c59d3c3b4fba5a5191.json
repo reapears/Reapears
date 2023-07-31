@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(location_.id) AS \"location_count\"\n            FROM services.active_locations location_\n\n            WHERE location_.farm_id IN (\n                SELECT location_.farm_id\n                FROM services.locations location_\n                WHERE location_.id = $1\n            )\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "location_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b2f1202425918b833cf65c235fb9124b915f17023025f9c59d3c3b4fba5a5191"
+}

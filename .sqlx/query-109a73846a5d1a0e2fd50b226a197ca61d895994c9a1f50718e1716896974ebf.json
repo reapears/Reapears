@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT cultivar.id AS cultivar_id,\n                    cultivar.name AS cultivar_name,\n                    cultivar.image AS cultivar_image, \n                    cultivar_category.name AS cultivar_category,\n                    (SELECT COUNT(harvest.id)\n                     FROM services.harvests harvest\n                     WHERE cultivar.id = harvest.cultivar_id) AS harvests_count\n                FROM services.cultivars cultivar\n                LEFT JOIN services.cultivar_categories cultivar_category\n                    ON cultivar.category_id = cultivar_category.id\n\n                ORDER BY cultivar.name\n                LIMIT $1\n                OFFSET $2;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cultivar_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "cultivar_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "cultivar_image",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "cultivar_category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "harvests_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "109a73846a5d1a0e2fd50b226a197ca61d895994c9a1f50718e1716896974ebf"
+}

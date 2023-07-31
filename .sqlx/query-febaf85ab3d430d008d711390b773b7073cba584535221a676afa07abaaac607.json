@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT location_.id AS \"id!\",\n                    location_.place_name AS \"place_name!\"\n                FROM services.active_locations location_\n\n                WHERE location_.farm_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "place_name!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "febaf85ab3d430d008d711390b773b7073cba584535221a676afa07abaaac607"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE services.farms farm\n                SET deleted = true,\n                deleted_at = $1\n            WHERE farm.id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2295c49e43f7f4c162b2e4db979706ac72c5bcece8acd023699a29f1bb62d564"
+}

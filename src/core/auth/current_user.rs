@@ -1,10 +1,16 @@
 //! Require authorization mixin impl
 
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
+use axum::{
+    async_trait,
+    extract::{FromRequestParts, Query},
+    http::request::Parts,
+};
 use axum_extra::extract::PrivateCookieJar;
 
 use crate::{
     auth::{
+        self,
+        api_key::ApiKeyQuery,
         sessions::{forms::SessionUpdate, get_session_token_hash, models::Session},
         TokenHash,
     },
@@ -35,25 +41,25 @@ impl FromRequestParts<ServerState> for CurrentUser {
         let key = state.cookie_key.clone();
         let cookie_jar = PrivateCookieJar::from_headers(&parts.headers, key);
 
-        let Some(session_token) = get_session_token_hash(&cookie_jar) else{
-            return Err(EndpointRejection::unauthorized());
+        let user = match get_session_token_hash(&cookie_jar) {
+            Some(session_token) => Self::from_cookies(session_token, db.clone()).await?,
+            None => Self::from_api_key(parts, state).await?,
         };
-
-        let Some(current_user) = get_current_user(session_token, db.clone()).await? else{
-            return Err(EndpointRejection::unauthorized());
-        };
-
-        // Update session last_used_at
-        tokio::spawn(async move { Session::update(session_token, SessionUpdate::new(), db).await });
 
         // Cache current user
-        parts.extensions.insert(current_user.clone());
+        parts.extensions.insert(user.clone());
 
-        Ok(current_user)
+        Ok(user)
     }
 }
 
 impl CurrentUser {
+    /// Returns the id of the user
+    #[must_use]
+    pub fn id(&self) -> ModelID {
+        self.id
+    }
+
     /// Creates a new `CurrentUser` from the database row
     const fn from_row(id: ModelID, is_farmer: bool, is_staff: bool, is_superuser: bool) -> Self {
         Self {
@@ -70,6 +76,33 @@ impl CurrentUser {
             Some(user) => Ok(user.clone()),
             None => Self::from_request_parts(parts, state).await,
         }
+    }
+
+    /// Authenticate and get user by Session token.
+    pub async fn from_cookies(token: TokenHash, db: DatabaseConnection) -> EndpointResult<Self> {
+        let Some(user) = get_current_user(token, db.clone()).await? else{
+            return Err(EndpointRejection::unauthorized());
+        };
+
+        // Update session last_used_at
+        tokio::spawn(async move { Session::update(token, SessionUpdate::new(), db).await });
+
+        Ok(user)
+    }
+
+    /// Authenticate and get user by Api key.
+    pub async fn from_api_key(parts: &mut Parts, state: &ServerState) -> EndpointResult<Self> {
+        let Ok(Query(key)) = Query::<ApiKeyQuery>::from_request_parts(parts, state).await else{
+            tracing::debug!("Request rejected no api key found");
+            return Err(EndpointRejection::unauthorized());
+        };
+
+        let token = auth::hash_token(key.api_key.as_bytes());
+        let Some(user) = get_current_user_by_api_key(token, state.database.clone()).await? else{
+            return Err(EndpointRejection::unauthorized());
+        };
+
+        Ok(user)
     }
 }
 
@@ -204,7 +237,7 @@ impl FarmerUser {
     }
 }
 
-/// Gets the user associated with the token
+/// Gets the user associated with the session token
 ///
 /// # Errors
 ///
@@ -224,6 +257,47 @@ pub async fn get_current_user(
                 ON sessions.user_id = user_.id
 
             WHERE sessions.token = $1;
+        "#,
+        &token
+    )
+    .fetch_optional(&db.pool)
+    .await
+    {
+        Ok(rec) => Ok(rec.map(|rec| {
+            CurrentUser::from_row(
+                rec.user_id.into(),
+                rec.is_farmer,
+                rec.is_staff,
+                rec.is_superuser,
+            )
+        })),
+        Err(err) => {
+            tracing::error!("Database error, failed to fetch current-user: {}", err);
+            Err(err.into())
+        }
+    }
+}
+
+/// Gets the user associated with the api key
+///
+/// # Errors
+///
+/// Return database error
+pub async fn get_current_user_by_api_key(
+    token: TokenHash,
+    db: DatabaseConnection,
+) -> ServerResult<Option<CurrentUser>> {
+    match sqlx::query!(
+        r#"
+            SELECT user_.id AS user_id,
+                user_.is_farmer,
+                user_.is_staff,
+                user_.is_superuser
+            FROM auth.api_tokens token
+            LEFT JOIN accounts.users user_ 
+                ON token.user_id = user_.id
+
+            WHERE token.token = $1;
         "#,
         &token
     )

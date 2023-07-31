@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE accounts.users user_\n                    SET phc_string = $1\n                WHERE user_.id = $2\n            \n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "555339f9ad38949a6289075e09510e86f5ef913d45c4301d5c8d5fd93ea6b3c7"
+}

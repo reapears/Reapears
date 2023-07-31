@@ -1,65 +1,13 @@
 //! Direct Message models impls
 
-use std::sync::Arc;
-
 use serde::Serialize;
 use time::OffsetDateTime;
-use tokio::sync::broadcast;
 
-use crate::{
-    error::{ServerError, ServerResult},
-    types::ModelID,
-};
-
-use super::forms::IncomingChat;
-
-/// Listen for incoming message and channels them
-#[derive(Debug, Clone)]
-pub struct ChatBroadcast(Arc<broadcast::Sender<IncomingChat>>);
-
-impl Default for ChatBroadcast {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ChatBroadcast {
-    /// Creates a new `ChatBroadcast` router
-    #[must_use]
-    pub fn new() -> Self {
-        let (sender, _recv) = broadcast::channel(1024);
-        Self(Arc::new(sender))
-    }
-
-    /// Sends an `IncomingChat` to the queue
-    pub fn send(&self, msg: IncomingChat) {
-        let _ = self.0.send(msg);
-    }
-
-    /// Returns new a receiver for incoming messages
-    #[must_use]
-    pub fn message_listener(&self) -> ChatMessages {
-        ChatMessages(self.0.subscribe())
-    }
-}
-
-/// Chat --
-#[derive(Debug)]
-pub struct ChatMessages(broadcast::Receiver<IncomingChat>);
-
-impl ChatMessages {
-    pub async fn recv(&mut self) -> ServerResult<IncomingChat> {
-        self.0
-            .recv()
-            .await
-            .map_err(|err| ServerError::new(err.to_string()))
-    }
-}
-
-// ===== Direct Message impls =====
+use crate::types::ModelID;
 
 /// Direct Message sent between two users.
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DirectMessage {
     pub id: ModelID,
     pub sender_id: ModelID,
@@ -96,8 +44,23 @@ impl DirectMessage {
 
 // ===== Conversation impls =====
 
+/// A list of Conversations the user had
+/// Ordered by the most recent first
+#[derive(Debug, Clone, Serialize)]
+pub struct Conversations(Vec<Conversation>);
+
+impl Conversations {
+    /// Creates a new `Conversations`
+    #[must_use]
+    pub fn from_row(mut conversations: Vec<Conversation>) -> Self {
+        conversations.sort_by_key(Conversation::ordering_key);
+        Self(conversations)
+    }
+}
+
 /// Direct messages sent between two users
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Conversation {
     pub user_id: ModelID,
     pub participant_id: ModelID,
@@ -129,19 +92,5 @@ impl Conversation {
             .last()
             .as_ref()
             .map_or(OffsetDateTime::UNIX_EPOCH, |msg| msg.sent_at)
-    }
-}
-
-/// A list of Conversations the user had
-/// Ordered by the most recent first
-#[derive(Debug, Clone)]
-pub struct Conversations(Vec<Conversation>);
-
-impl Conversations {
-    /// Creates a new `Conversations`
-    #[must_use]
-    pub fn from_row(mut conversations: Vec<Conversation>) -> Self {
-        conversations.sort_by_key(Conversation::ordering_key);
-        Self(conversations)
     }
 }

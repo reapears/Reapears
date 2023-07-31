@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE accounts.users user_\n                SET is_staff = $1\n\n                WHERE user_.id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "54abc614512654efd185ce3129af09c195846f34f1d665d7443acaa32b8bf06d"
+}

@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT user_.id AS user_id,\n                    user_.first_name AS user_first_name,\n                    user_.last_name AS user_last_name,\n                    profile.photo AS user_photo\n                FROM accounts.users user_\n                LEFT JOIN accounts.user_profiles profile\n                    ON user_.id = profile.user_id\n                ORDER BY user_.last_name, user_.last_name\n                LIMIT $1\n                OFFSET $2;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_first_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_last_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_photo",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "9b03ff93665f403432141709325c09dd003cffd4ef68db34025f4b51274c11e4"
+}

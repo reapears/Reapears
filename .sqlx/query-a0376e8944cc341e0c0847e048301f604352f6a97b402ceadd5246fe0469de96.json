@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT user_.phc_string\n            FROM accounts.users user_\n            WHERE user_.id = $1;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "phc_string",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a0376e8944cc341e0c0847e048301f604352f6a97b402ceadd5246fe0469de96"
+}

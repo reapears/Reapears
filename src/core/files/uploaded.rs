@@ -9,20 +9,16 @@ use crate::{endpoint::EndpointRejection, error::ServerResult, types::ModelID};
 /// Raw file uploaded via `Multipart`
 #[derive(Clone, Debug)]
 pub struct UploadedFile {
-    /// file unique id
     pub id: ModelID,
-    /// file name without extension
-    pub stem: String,
-    /// file name extension
-    pub ext: String,
-    // pub content: Vec<u8>,
+    pub file_stem: String,
+    pub file_ext: String,
     pub content: bytes::Bytes,
     pub content_type: String,
     pub field_name: Option<String>,
 }
 
 impl UploadedFile {
-    /// Decode
+    /// Parses `Multipart field` into an `UploadedFile`
     #[tracing::instrument(fields(file_name, content_type))]
     pub async fn try_from_field<'a>(field: Field<'a>) -> Result<Self, EndpointRejection> {
         let Some(file_name) = field.file_name() else{
@@ -65,22 +61,23 @@ impl UploadedFile {
 
         Ok(Self {
             id: ModelID::new(),
-            stem: file_stem,
-            ext: file_ext,
+            file_stem,
+            file_ext,
             content,
             content_type,
             field_name,
         })
     }
 
-    #[tracing::instrument(skip(self))]
-    pub async fn save(self, to: String) -> ServerResult<PathBuf> {
-        let path = Path::new(&to).join(self.stem).join(self.ext);
+    /// Saves an uploaded file to the file system
+    pub async fn save_uploaded<P>(self, upload_dir: P) -> ServerResult<PathBuf>
+    where
+        P: AsRef<Path> + Send + 'static,
+    {
+        let path = upload_dir
+            .as_ref()
+            .join(self.file_stem)
+            .with_extension(self.file_ext);
         super::save_file(&path, &self.content).await
-    }
-
-    #[must_use]
-    pub fn file_name(&self) -> String {
-        format!("{}.{}", self.stem.clone(), self.ext.clone())
     }
 }

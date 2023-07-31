@@ -6,10 +6,7 @@ use axum::{
 };
 
 use crate::{
-    auth::AdminUser,
-    endpoint::{EndpointRejection, EndpointResult},
-    server::state::DatabaseConnection,
-    types::ModelID,
+    auth::AdminUser, endpoint::EndpointResult, server::state::DatabaseConnection, types::ModelID,
 };
 
 use super::{forms::RegionForm, Region, RegionList};
@@ -17,50 +14,40 @@ use super::{forms::RegionForm, Region, RegionList};
 /// Handles the `GET /locations/countries/:country_id/regions` route.
 #[tracing::instrument(skip(db))]
 pub async fn region_list(State(db): State<DatabaseConnection>) -> EndpointResult<Json<RegionList>> {
-    Region::records(db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |regions| Ok(Json(regions)),
-    )
+    let regions = Region::records(db).await?;
+    Ok(Json(regions))
 }
 
 /// Handles the `POST /locations/countries/regions` route.
-#[tracing::instrument(skip(db, user, form))]
+#[tracing::instrument(skip(db, form))]
 pub async fn region_create(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     State(db): State<DatabaseConnection>,
     form: RegionForm,
 ) -> EndpointResult<StatusCode> {
-    Region::insert(form.into(), db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_id| Ok(StatusCode::CREATED),
-    )
+    Region::insert(form.into(), db).await?;
+    Ok(StatusCode::CREATED)
 }
 
 /// Handles the `PUT /locations/countries/regions/region_id` route.
-#[tracing::instrument(skip(db, user, form))]
+#[tracing::instrument(skip(db, form))]
 pub async fn region_update(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     region_id: ModelID,
     State(db): State<DatabaseConnection>,
     form: RegionForm,
 ) -> EndpointResult<StatusCode> {
-    Region::update(region_id, form.into(), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
+    Region::update(region_id, form.into(), db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `DELETE /locations/countries/regions/region_id` route.
-#[tracing::instrument(skip(db, user))]
+#[tracing::instrument(skip(db,))]
 pub async fn region_delete(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     region_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    Region::delete(region_id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_| Ok(StatusCode::NO_CONTENT),
-    )
+    Region::delete(region_id, db).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

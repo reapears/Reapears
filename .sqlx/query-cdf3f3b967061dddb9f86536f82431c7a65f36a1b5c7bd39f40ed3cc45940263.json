@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO accounts.users(\n                    id, \n                    first_name, \n                    last_name, \n                    phc_string, \n                    is_staff,\n                    is_superuser,\n                    is_farmer, \n                    date_joined, \n                    account_locked\n                )\n                 VALUES($1, $2, $3, $4, $5, $6, false, $7, $8);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Bool",
+        "Timestamptz",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cdf3f3b967061dddb9f86536f82431c7a65f36a1b5c7bd39f40ed3cc45940263"
+}

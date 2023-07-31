@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.farm_ratings farm_rating\n                SET grade = COALESCE($1, farm_rating.grade),\n                    comment = $2,\n                    updated_at = $3\n                    WHERE farm_rating.id = $4\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f9fed8605e75d59a3eb0b40b0a18bef3f1f338560647300fa7ac9b49477ba212"
+}

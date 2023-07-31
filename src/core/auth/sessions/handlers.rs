@@ -3,7 +3,6 @@
 use axum::{
     extract::{Query, State},
     headers::UserAgent,
-    http::StatusCode,
     response::Redirect,
     TypedHeader,
 };
@@ -32,11 +31,15 @@ pub async fn login(
     State(db): State<DatabaseConnection>,
     form: LoginForm,
 ) -> EndpointResult<(PrivateCookieJar, Redirect)> {
+    // Get success redirect if provided
+    let redirect = redirect_to.unwrap_or_default();
+    let return_to = redirect.0.return_to;
+
     // Verify the user is not logged-in already
     // so we don't insert duplicate sessions in the database
     if let Some(token) = get_session_token_hash(&cookie_jar) {
         if (get_current_user(token, db.clone()).await?).is_some() {
-            return Ok((cookie_jar, Redirect::to("/harvests")));
+            return Ok((cookie_jar, Redirect::to(&return_to)));
         }
     }
 
@@ -45,10 +48,6 @@ pub async fn login(
     let (values, token) = form.session_data(user_agent);
     Session::insert(values, db).await?;
     let cookie_jar = add_session_cookie(cookie_jar, token);
-
-    // Get success redirect if provided
-    let redirect = redirect_to.unwrap_or_default();
-    let return_to = redirect.0.return_to;
 
     Ok((cookie_jar, Redirect::to(&return_to)))
 }
@@ -60,10 +59,10 @@ pub async fn logout(
     current_user: CurrentUser,
     cookie_jar: PrivateCookieJar,
     State(db): State<DatabaseConnection>,
-) -> EndpointResult<(StatusCode, PrivateCookieJar)> {
+) -> EndpointResult<(PrivateCookieJar, Redirect)> {
     // Safety: authorization passed so the token is there
     let token_hash = get_session_token_hash(&cookie_jar).unwrap();
     Session::delete(token_hash, db).await?;
     let cookie_jar = remove_session_cookie(cookie_jar);
-    Ok((StatusCode::NO_CONTENT, cookie_jar))
+    Ok((cookie_jar, Redirect::to("/")))
 }

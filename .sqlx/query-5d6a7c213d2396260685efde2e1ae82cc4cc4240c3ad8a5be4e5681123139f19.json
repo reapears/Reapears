@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO services.farm_ratings(\n                    id, \n                    author_id, \n                    farm_id, \n                    grade, \n                    comment, \n                    created_at\n                )\n                VALUES($1, $2, $3, $4, $5, $6)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5d6a7c213d2396260685efde2e1ae82cc4cc4240c3ad8a5be4e5681123139f19"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT EXISTS(\n                    SELECT 1 FROM auth.api_tokens\n                    WHERE token = $1 AND revoked = FALSE\n                ) AS \"is_valid!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_valid!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c7565286c9b8263bc4cbda5e0cce017a270ba0c2784cc5e309ab17dcd855f889"
+}

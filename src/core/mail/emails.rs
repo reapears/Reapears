@@ -2,7 +2,7 @@
 use minijinja::context;
 
 use super::message::EmailMessage;
-use crate::error::ServerResult;
+use crate::{error::ServerResult, APP_NAME};
 
 // ====== Email Templates ======
 
@@ -125,12 +125,11 @@ impl EmailTemplates {
     /// Return account confirm email
     pub fn account_confirm(
         &self,
+        server_email: &str,
         first_name: &str,
         user_email: &str,
         link: &str,
     ) -> ServerResult<EmailMessage> {
-        const SUBJECT: &str = "[Reapears] Please verify your email address.";
-
         let text = self
             .0
             .get_template(NAME_ACCOUNT_CONFIRMATION_EMAIL_TEXT)
@@ -144,18 +143,20 @@ impl EmailTemplates {
             .render(context! { first_name => first_name, email => user_email, link => link })
             .unwrap();
 
-        EmailMessage::from_outlook(user_email, SUBJECT, text, html)
+        let subject = format!("[{APP_NAME}] Please verify your email address.");
+
+        EmailMessage::from_server(server_email, user_email, &subject, text, html)
     }
 
     /// Return approve email change email
     pub fn approve_email_change(
         &self,
+        server_email: &str,
         first_name: &str,
         user_email: &str,
         new_email: &str,
         code: &str,
     ) -> ServerResult<EmailMessage> {
-        const SUBJECT: &str = "[Reapears] Please approve Reapears email account change.";
         let text = self
             .0
             .get_template(NAME_APPROVE_EMAIL_CHANGE_EMAIL_TEXT)
@@ -169,17 +170,19 @@ impl EmailTemplates {
             .render(context! { first_name => first_name, new_email => new_email, code => code })
             .unwrap();
 
-        EmailMessage::from_outlook(user_email, SUBJECT, text, html)
+        let subject = format!("[{APP_NAME}] Please approve your {APP_NAME} account email change.");
+
+        EmailMessage::from_server(server_email, user_email, &subject, text, html)
     }
 
     /// Return password reset email
     pub fn password_reset(
         &self,
+        server_email: &str,
         first_name: &str,
         user_email: &str,
         link: &str,
     ) -> ServerResult<EmailMessage> {
-        const SUBJECT: &str = "[Reapears] Password reset";
         let text = self
             .0
             .get_template(NAME_PASSWORD_RESET_EMAIL_TEXT)
@@ -193,18 +196,19 @@ impl EmailTemplates {
             .render(context! { first_name => first_name, link => link })
             .unwrap();
 
-        EmailMessage::from_outlook(user_email, SUBJECT, text, html)
+        let subject = format!("[{APP_NAME}] Password reset.");
+
+        EmailMessage::from_server(server_email, user_email, &subject, text, html)
     }
 
     /// Return verify new-email email
     pub fn verify_new_email(
         &self,
+        server_email: &str,
         first_name: &str,
         new_email: &str,
         code: &str,
     ) -> ServerResult<EmailMessage> {
-        const SUBJECT: &str = "[Reapears] Verify your new Reapears email account";
-
         let text = self
             .0
             .get_template(NAME_APPROVE_EMAIL_CHANGE_EMAIL_TEXT)
@@ -218,6 +222,8 @@ impl EmailTemplates {
             .render(context! { first_name => first_name, new_email => new_email, code => code })
             .unwrap();
 
-        EmailMessage::from_outlook(new_email, SUBJECT, text, html)
+        let subject = format!("[{APP_NAME}] Verify your new {APP_NAME} account email.");
+
+        EmailMessage::from_server(server_email, new_email, &subject, text, html)
     }
 }

@@ -1,48 +1,61 @@
 //! Direct Message form impls
 
-use crate::types::ModelID;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::types::ModelID;
+
 use super::models::DirectMessage;
 
-/*
-NewMessage
-MessageIsReadUpdate
-MessageDelete
-Notifications
-    UserConnected(ModelId)
-    UserDisconnected(ModelId)
-
-- Every message sent to the channel must specify who it is directed to
-9++
-NewMessage -> save to database -> sent listeners -> forward to intended users
-UpdateIsRead -> save to database -> sent listeners -> forward to intended users
-*/
-
-/// An Incoming message sent by user via websocket
-///
-/// e.g {"Mgs":{...}}
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum IncomingChat {
-    #[serde(skip_serializing)]
-    NewMessage(NewMessage),
-    #[serde(skip_deserializing)]
+/// Message sent from server to user(s) via websocket.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", content = "body")]
+pub enum ForwardMessage {
     DirectMessage(DirectMessage),
-    DeleteMessage(DeleteMessage),
-    // Notifications
-    UpdateMessageRead(UpdateMessagesRead),
-    NotifyUserConnected(ModelID),
-    NotifyUserDisconnected(ModelID),
+    MessageIsRead(MessageIsRead),
+    UserConnected(ModelID),
+    UserDisconnected(ModelID),
+    IncomingMessageError(IncomingMessageError),
 }
 
-// ===== New Message impls =====
+/// Message sent from client to server via websocket.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "type", content = "body")]
+pub enum IncomingMessage {
+    NewMessage(NewMessage),
+    MessageIsRead(MessageIsRead),
+    MessageDelete(MessageDelete),
+    UserConnected,
+    UserDisconnected,
+}
+
+// ===== Variant impls =====
 
 /// New direct message ws request
 #[derive(Debug, Clone, Deserialize)]
 pub struct NewMessage {
     pub content: String,
     pub receiver_id: String,
+}
+
+/// New Message cleaned data
+#[derive(Debug, Clone)]
+pub struct NewMessageInsertData {
+    pub id: ModelID,
+    pub sender_id: ModelID,
+    pub receiver_id: ModelID,
+    pub content: String,
+    pub sent_at: OffsetDateTime,
+    pub status: NewMessageStatusInsertData,
+}
+
+/// New Message metadata
+#[derive(Debug, Clone)]
+pub struct NewMessageStatusInsertData {
+    pub message_id: ModelID,
+    pub is_read: bool,
+    pub sender_has_deleted: bool,
+    pub receiver_has_deleted: bool,
 }
 
 impl NewMessage {
@@ -61,40 +74,20 @@ impl NewMessage {
     }
 }
 
-/// New Message cleaned data
-#[derive(Debug, Clone)]
-pub struct NewMessageInsertData {
-    pub id: ModelID,
-    pub sender_id: ModelID,
-    pub receiver_id: ModelID,
-    pub content: String,
-    pub sent_at: OffsetDateTime,
-    pub status: NewMessageStatusInsertData,
-}
-
 impl NewMessageInsertData {
     /// Convert `Self` into `DirectMessage`
     #[must_use]
-    pub fn direct_message(self) -> DirectMessage {
+    pub fn direct_message(&self) -> DirectMessage {
         DirectMessage {
             id: self.id,
             sender_id: self.sender_id,
             receiver_id: self.receiver_id,
-            content: self.content,
+            content: self.content.clone(),
             sent_at: self.sent_at,
             is_author: false,
             is_read: false,
         }
     }
-}
-
-/// New Message metadata
-#[derive(Debug, Clone)]
-pub struct NewMessageStatusInsertData {
-    pub message_id: ModelID,
-    pub is_read: bool,
-    pub sender_has_deleted: bool,
-    pub receiver_has_deleted: bool,
 }
 
 impl NewMessageStatusInsertData {
@@ -110,24 +103,31 @@ impl NewMessageStatusInsertData {
     }
 }
 
-// ===== Update Message `is_read` impls =====
-
 /// Update messages are `is_read` ws request
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct UpdateMessagesRead {
-    pub message: Vec<MessageReadUpdate>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct MessageReadUpdate {
+#[serde(rename_all = "camelCase")]
+pub struct MessageIsRead {
     pub sender_id: ModelID,
-    pub message_id: ModelID,
+    pub messages: Vec<ModelID>,
 }
-
-// ===== Delete Message impls =====
 
 /// Delete direct message ws request
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct DeleteMessage {
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageDelete {
     pub message_id: ModelID,
+}
+
+/// An error sent to the user which
+/// encountered while working with an `IncomingMessage`.
+#[derive(Debug, Clone, Serialize)]
+// #[serde(tag = "code")]
+pub enum IncomingMessageError {
+    /// `IncomingMessage` could not be deserialized error.
+    UnprocessableEntity,
+    /// Server error occurs while working with an `IncomingMessage`.
+    InternalServerError,
+    // NotFound,
+    // Forbidden,
+    // BadRequest(String),
 }

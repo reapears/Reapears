@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH farm_stats AS(\n                SELECT farm.id AS farm_id, COUNT(harvest.id)\n                FROM services.active_farms farm\n                LEFT JOIN services.locations location_\n                    ON farm.id = location_.farm_id\n                LEFT JOIN services.harvests harvest\n                    ON location_.id = harvest.location_id\n\n                WHERE farm.owner_id = $1\n                GROUP BY farm.id\n            )\n\n            DELETE FROM services.farms farm\n\n            WHERE farm.id IN(\n                SELECT stat.farm_id\n                FROM farm_stats stat\n                WHERE stat.count = 0\n            );\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "02a4fa71c7c5b7561ef13e04e64b2238b3c0db2e30f8e63c86822b723cd80896"
+}

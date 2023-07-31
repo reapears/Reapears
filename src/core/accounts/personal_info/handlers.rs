@@ -16,18 +16,9 @@ pub async fn user_personal_info(
     user: CurrentUser,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<PersonalInfo>> {
-    PersonalInfo::find(user.id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |personal_info| {
-            personal_info.map_or_else(
-                || {
-                    Err(EndpointRejection::NotFound(
-                        "User personal infos not found".into(),
-                    ))
-                },
-                |personal_info| Ok(Json(personal_info)),
-            )
-        },
+    PersonalInfo::find(user.id, db).await?.map_or_else(
+        || Err(EndpointRejection::NotFound("User not found".into())),
+        |personal_info| Ok(Json(personal_info)),
     )
 }
 
@@ -38,10 +29,6 @@ pub async fn user_personal_info_update(
     State(db): State<DatabaseConnection>,
     form: PersonalInfoUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    PersonalInfo::update(user.id, form.into(), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
+    PersonalInfo::update(user.id, form.into(), db).await?;
+    Ok(StatusCode::OK)
 }

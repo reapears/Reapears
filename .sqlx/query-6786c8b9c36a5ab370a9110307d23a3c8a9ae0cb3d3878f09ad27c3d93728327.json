@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT EXISTS(\n                    SELECT 1 FROM accounts.emails address\n                    WHERE LOWER(address.email) = LOWER($1)\n                        AND address.verified = $2\n                ) AS \"exists!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6786c8b9c36a5ab370a9110307d23a3c8a9ae0cb3d3878f09ad27c3d93728327"
+}

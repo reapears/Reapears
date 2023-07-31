@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE features.message_status status\n                    SET is_read = TRUE,\n                        read_at = $1\n                WHERE status.message_id = ANY($2);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b50b9a559a2c2cef572861addaeffbe373df4d97b8b336a76e70f19ae0724dcc"
+}

@@ -204,8 +204,8 @@ impl Conversation {
     /// Deletes Direct Message from the database
     #[tracing::instrument(name = "Delete Direct Message", skip(db))]
     pub async fn delete(
-        message_id: ModelID,
         user_id: ModelID,
+        message_id: ModelID,
         db: DatabaseConnection,
     ) -> ServerResult<()> {
         let msg_status = find_message_status(message_id, db.clone()).await?;

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO services.cultivars (\n                    id, \n                    category_id, \n                    name\n                )\n                VALUES ($1, $2, $3);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e4e1b9778491cd01245fa81d13edeb98463506317daae185f4585632c346eb2b"
+}

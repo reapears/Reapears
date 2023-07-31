@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM accounts.email_pending_updates pending\n                WHERE pending.id = $1;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bbf6289775697108f22d9ce4e222b7c366e9f796dded2172c8cc28213f1e31a1"
+}

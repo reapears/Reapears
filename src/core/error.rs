@@ -1,6 +1,6 @@
 //! Server error impls
 
-use std::{convert::AsRef, error::Error as StdError, fmt};
+use std::{error::Error as StdError, fmt};
 
 use crate::endpoint::EndpointRejection;
 

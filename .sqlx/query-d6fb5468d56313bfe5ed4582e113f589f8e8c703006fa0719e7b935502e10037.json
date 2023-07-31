@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(harvest.id) AS \"harvest_count!\"\n            FROM services.harvests harvest\n\n            WHERE harvest.location_id IN (\n                SELECT location_.id\n                FROM services.locations location_\n                WHERE location_.farm_id = $1\n            )\n            AND harvest.finished = true;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "harvest_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d6fb5468d56313bfe5ed4582e113f589f8e8c703006fa0719e7b935502e10037"
+}

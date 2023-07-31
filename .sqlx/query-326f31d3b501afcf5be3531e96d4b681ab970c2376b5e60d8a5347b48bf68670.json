@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO accounts.user_profiles(\n                    user_id,\n                    about, \n                    lives_at\n                )\n                VALUES($1, $2, $3)\n\n                ON CONFLICT ON CONSTRAINT user_profiles_pkey\n                DO UPDATE SET about = EXCLUDED.about,\n                            lives_at = EXCLUDED.lives_at;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "326f31d3b501afcf5be3531e96d4b681ab970c2376b5e60d8a5347b48bf68670"
+}

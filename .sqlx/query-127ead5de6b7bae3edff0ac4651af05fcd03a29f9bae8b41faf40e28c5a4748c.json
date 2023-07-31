@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO features.harvest_subscriptions (\n                    id,\n                    harvest_id,\n                    amount,\n                    expires_at,\n                    created_at\n                )\n                VALUES ($1, $2, $3, $4, $5);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Numeric",
+        "Date",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "127ead5de6b7bae3edff0ac4651af05fcd03a29f9bae8b41faf40e28c5a4748c"
+}

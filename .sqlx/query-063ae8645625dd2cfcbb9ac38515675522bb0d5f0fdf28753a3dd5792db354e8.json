@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": " \n                SELECT reset_token.user_id,\n                    reset_token.token_generated_at\n                FROM auth.password_reset_tokens reset_token\n                WHERE reset_token.token = $1;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "token_generated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "063ae8645625dd2cfcbb9ac38515675522bb0d5f0fdf28753a3dd5792db354e8"
+}

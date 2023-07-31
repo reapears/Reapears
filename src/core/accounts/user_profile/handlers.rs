@@ -15,10 +15,7 @@ use crate::{
     types::ModelID,
 };
 
-use super::{
-    forms::UserProfileUpdateForm, models::UserProfile, utils::delete_user_photo,
-    USER_MAX_PROFILE_PHOTO,
-};
+use super::{forms::UserProfileUpdateForm, models::UserProfile, utils::delete_user_photo};
 
 /// Handles the `GET account/users/:id/profile` route.
 #[tracing::instrument(skip(db))]
@@ -26,14 +23,9 @@ pub async fn user_profile(
     id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<UserProfile>> {
-    UserProfile::find(id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |profile| {
-            profile.map_or_else(
-                || Err(EndpointRejection::NotFound("User profile not found".into())),
-                |profile| Ok(Json(profile)),
-            )
-        },
+    UserProfile::find(id, db).await?.map_or_else(
+        || Err(EndpointRejection::NotFound("User profile not found".into())),
+        |profile| Ok(Json(profile)),
     )
 }
 
@@ -52,12 +44,8 @@ pub async fn user_profile_update(
     State(db): State<DatabaseConnection>,
     form: UserProfileUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    UserProfile::create_or_update(user.id, form.into(), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
+    UserProfile::create_or_update(user.id, form.into(), db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `POST /account/users/profile/photo` route.
@@ -67,11 +55,11 @@ pub async fn user_photo_upload(
     State(db): State<DatabaseConnection>,
     multipart: Multipart,
 ) -> EndpointResult<Json<String>> {
-    let (handler, mut uploads) = files::accept_uploads(multipart, USER_MAX_PROFILE_PHOTO);
+    let (handler, mut uploads) = files::accept_uploads(multipart, crate::USER_MAX_PROFILE_PHOTO);
     handler.accept().await?; // Receive photo from the client
     if let Some(file) = uploads.files().await {
         // Save an image to the file system
-        let saved_to = files::save_image(file, USER_UPLOAD_DIR).await?;
+        let saved_to = file.save_image(USER_UPLOAD_DIR).await?;
 
         // Save image path to the database
         let (new_photo, old_photo) = UserProfile::insert_photo(user.id, saved_to, db).await?;

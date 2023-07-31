@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT first_name\n            FROM accounts.users user_\n            LEFT JOIN services.farm_ratings farm_rating\n                ON user_.id = farm_rating.author_id\n            WHERE (\n                user_.id = $1\n                AND farm_rating.id = $2\n            )\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "first_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0854d8be0ff946126d26388295ae37c66f6fd20a282445ae00c1f0069b162392"
+}

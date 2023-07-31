@@ -45,8 +45,8 @@ pub async fn harvest_feed(
                 (false, false) => {
                     cultivars.contains(&harvest.name) && regions.contains(&harvest.region)
                 }
-                (true, false) => cultivars.contains(&harvest.name),
-                (false, true) => regions.contains(&harvest.region),
+                (false, true) => cultivars.contains(&harvest.name),
+                (true, false) => regions.contains(&harvest.region),
             })
         })
         // Limit

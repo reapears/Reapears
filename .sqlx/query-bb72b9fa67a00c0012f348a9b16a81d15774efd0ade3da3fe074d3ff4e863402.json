@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.locations location\n                SET place_name = COALESCE($1, location.place_name),\n                    region_id = $2,\n                    country_id = COALESCE($3, location.country_id),\n                    description = COALESCE($4, location.description),\n                    coords = $5\n                WHERE location.id = $6;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bb72b9fa67a00c0012f348a9b16a81d15774efd0ade3da3fe074d3ff4e863402"
+}

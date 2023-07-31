@@ -44,7 +44,6 @@ impl ModelID {
 
 impl TryFrom<&str> for ModelID {
     type Error = ServerError;
-
     fn try_from(id: &str) -> Result<Self, Self::Error> {
         let id = Uuid::parse_str(id).map_err(|err| {
             ServerError::new(format!(

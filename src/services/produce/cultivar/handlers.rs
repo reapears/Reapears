@@ -18,7 +18,6 @@ use super::{
     forms::{CultivarCreateForm, CultivarUpdateForm},
     models::{Cultivar, CultivarList},
     utils::delete_cultivar_photo,
-    CULTIVAR_MAX_IMAGE,
 };
 
 /// Handles the `GET /cultivars` route.
@@ -28,10 +27,8 @@ pub async fn cultivar_list(
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<CultivarList>> {
     let pagination = pg.unwrap_or_default().0;
-    Cultivar::records(pagination, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |cultivars| Ok(Json(cultivars)),
-    )
+    let cultivars = Cultivar::records(pagination, db).await?;
+    Ok(Json(cultivars))
 }
 
 /// Handles the `GET /cultivars/:cultivar_id` route.
@@ -43,58 +40,45 @@ pub async fn cultivar_detail(
 ) -> EndpointResult<Json<Cultivar>> {
     let pagination = pg.unwrap_or_default().0;
     Cultivar::find(cultivar_id, Some(pagination), db)
-        .await
+        .await?
         .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |cultivar| {
-                cultivar.map_or_else(
-                    || Err(EndpointRejection::NotFound("Cultivar not found.".into())),
-                    |cultivar| Ok(Json(cultivar)),
-                )
-            },
+            || Err(EndpointRejection::NotFound("Cultivar not found.".into())),
+            |cultivar| Ok(Json(cultivar)),
         )
 }
 
 /// Handles the `POST /cultivars` route.
-#[tracing::instrument(skip(db, user, form))]
+#[tracing::instrument(skip(db, form))]
 pub async fn cultivar_create(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     State(db): State<DatabaseConnection>,
     form: CultivarCreateForm,
 ) -> EndpointResult<StatusCode> {
-    Cultivar::insert(form.into(), db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_cultivar_id| Ok(StatusCode::CREATED),
-    )
+    Cultivar::insert(form.into(), db).await?;
+    Ok(StatusCode::CREATED)
 }
 
 /// Handles the `PUT /cultivars/:cultivar_id` route.
-#[tracing::instrument(skip(db, user, form))]
+#[tracing::instrument(skip(db, form))]
 pub async fn cultivar_update(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     cultivar_id: ModelID,
     State(db): State<DatabaseConnection>,
     form: CultivarUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    Cultivar::update(cultivar_id, form.into(), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
+    Cultivar::update(cultivar_id, form.into(), db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `DELETE /cultivars/:cultivar_id` route.
-#[tracing::instrument(skip(db, user))]
+#[tracing::instrument(skip(db,))]
 pub async fn cultivar_delete(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     cultivar_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    Cultivar::delete(cultivar_id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_| Ok(StatusCode::NO_CONTENT),
-    )
+    Cultivar::delete(cultivar_id, db).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Handles the `GET /cultivars/index` route.
@@ -102,25 +86,23 @@ pub async fn cultivar_delete(
 pub async fn cultivar_index(
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<ModelIndex>> {
-    Cultivar::index(db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |index| Ok(Json(index)),
-    )
+    let cultivar_index = Cultivar::index(db).await?;
+    Ok(Json(cultivar_index))
 }
 
 /// Handles the `POST /cultivars/:cultivar_id/photo` route.
-#[tracing::instrument(skip(db, user, multipart))]
+#[tracing::instrument(skip(db, multipart))]
 pub async fn cultivar_image_upload(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     cultivar_id: ModelID,
     State(db): State<DatabaseConnection>,
     multipart: Multipart,
 ) -> EndpointResult<Json<String>> {
-    let (handler, mut uploads) = files::accept_uploads(multipart, CULTIVAR_MAX_IMAGE);
+    let (handler, mut uploads) = files::accept_uploads(multipart, crate::CULTIVAR_MAX_IMAGE);
     handler.accept().await?; // Receive file from the client
     if let Some(file) = uploads.files().await {
         // Save an image to the file system
-        let paths = files::save_image(file, CULTIVAR_UPLOAD_DIR).await?;
+        let paths = file.save_image(CULTIVAR_UPLOAD_DIR).await?;
 
         // Save image path to the database
         let (path, old_image) = Cultivar::insert_photo(cultivar_id, paths.clone(), db).await?;
@@ -138,14 +120,12 @@ pub async fn cultivar_image_upload(
 }
 
 /// Handles the `DELETE /cultivars/:cultivar_id/photo` route.
-#[tracing::instrument(skip(db, user))]
+#[tracing::instrument(skip(db,))]
 pub async fn cultivar_image_delete(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     cultivar_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    Cultivar::delete_photo(cultivar_id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_| Ok(StatusCode::NO_CONTENT),
-    )
+    Cultivar::delete_photo(cultivar_id, db).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

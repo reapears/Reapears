@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE accounts.user_profiles profile\n                SET photo = $1\n                WHERE profile.user_id = $2\n\n                RETURNING (\n                    SELECT profile.photo\n                    FROM accounts.user_profiles profile\n                    WHERE profile.user_id = $2\n                ) AS old_photo\n           ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "old_photo",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "3b8895f8cc1b82307d2b3bd9682064669039979691ee55744452c4b198dd64a3"
+}

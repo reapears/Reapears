@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                 DELETE FROM accounts.account_delete_requests\n                 WHERE user_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b106ec4dc90e331d5dfbdf3a02d9cc282c270af38f5d5132b925cb28a8a296dc"
+}

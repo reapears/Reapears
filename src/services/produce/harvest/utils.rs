@@ -3,7 +3,6 @@
 use std::path::PathBuf;
 
 use time::{Date, Duration, OffsetDateTime};
-use tokio::task::JoinSet;
 
 use crate::{
     error::{ServerError, ServerResult},
@@ -13,7 +12,7 @@ use crate::{
     types::ModelID,
 };
 
-use super::{db::handle_harvest_database_error, HARVEST_MAX_AGE_TO_ARCHIVE};
+use super::db::handle_harvest_database_error;
 
 /// find harvest from the database for deletion
 ///
@@ -167,7 +166,7 @@ fn can_delete_harvest(
 /// Return an error if failed to calculate harvest max age
 pub fn harvest_max_age(finished_at: OffsetDateTime) -> ServerResult<OffsetDateTime> {
     finished_at
-        .checked_sub(Duration::days(HARVEST_MAX_AGE_TO_ARCHIVE))
+        .checked_sub(Duration::days(crate::HARVEST_MAX_AGE_TO_ARCHIVE))
         .ok_or_else(|| {
             ServerError::new(
                 "Harvest database delete error, failed calculate harvest max age to archive.",
@@ -180,34 +179,19 @@ pub fn harvest_max_age(finished_at: OffsetDateTime) -> ServerResult<OffsetDateTi
 /// # Errors
 ///
 /// Return an error if failed to delete files
-pub async fn delete_harvest_photos(paths: Vec<String>) -> ServerResult<()> {
-    let all_paths: Vec<_> = paths
-        .iter()
+pub async fn delete_harvest_photos<P>(paths: P) -> ServerResult<()>
+where
+    P: Iterator<Item = String> + Send,
+{
+    let all_paths: Vec<PathBuf> = paths
         .flat_map(|file| {
-            files::IMAGE_FORMATS.into_iter().map(move |ext| {
+            crate::IMAGE_OUTPUT_FORMATS.map(|ext| {
                 PathBuf::from(HARVEST_UPLOAD_DIR)
-                    .join(file)
-                    .with_extension(ext)
+                    .join(&file)
+                    .with_extension(ext.extensions_str()[0])
             })
         })
         .collect();
 
     files::delete_files(all_paths).await
-}
-
-/// Delete a vector of harvest images
-///
-/// Ignores the errors
-pub async fn delete_harvest_photos_list(images: Vec<Vec<String>>) {
-    // Delete harvests images
-    let mut tasks = JoinSet::new();
-    for paths in images {
-        tasks.spawn(async move { delete_harvest_photos(paths).await });
-    }
-    // Wait for tasks to finish
-    while let Some(res) = tasks.join_next().await {
-        if res.is_err() {
-            tracing::error!("Harvest delete images task error: {res:?}");
-        }
-    }
 }

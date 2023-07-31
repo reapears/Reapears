@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE accounts.email_pending_updates pending\n                SET new_email_verify_token = $1\n                WHERE pending.user_id = $2\n             ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f18eb83b63538e37b3c69c8e03d4307b13c48c1bfb997d2988bff9df8d67b474"
+}

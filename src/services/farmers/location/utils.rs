@@ -84,42 +84,6 @@ pub async fn archive_location(
     }
 }
 
-/// Fetch farm location count
-///
-/// # Errors
-///
-/// Return database error
-pub async fn farm_location_count(
-    location_id: ModelID,
-    db: DatabaseConnection,
-) -> ServerResult<i64> {
-    match sqlx::query!(
-        r#"
-            SELECT COUNT(location_.id) AS "location_count!"
-            FROM services.active_locations location_
-
-            WHERE location_.farm_id IN (
-                SELECT location_.farm_id
-                FROM services.locations location_
-                WHERE location_.id = $1
-            )
-        "#,
-        location_id.0
-    )
-    .fetch_one(&db.pool)
-    .await
-    {
-        Ok(rec) => Ok(rec.location_count),
-        Err(err) => {
-            tracing::error!(
-                "Database error, failed to fetch farm active location count: {}",
-                err
-            );
-            Err(err.into())
-        }
-    }
-}
-
 /// Fetch location active harvests images
 ///
 /// # Errors

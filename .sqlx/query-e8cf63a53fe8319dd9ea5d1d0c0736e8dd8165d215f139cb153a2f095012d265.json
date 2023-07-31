@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT token.id,\n                     token.user_id,\n                     token.token,\n                     token.belongs_to,\n                     token.created_at,\n                     token.last_used_at,\n                     token.revoked\n                FROM auth.api_tokens token\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "token",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 3,
+        "name": "belongs_to",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_used_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "revoked",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e8cf63a53fe8319dd9ea5d1d0c0736e8dd8165d215f139cb153a2f095012d265"
+}
