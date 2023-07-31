@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM services.regions region\n                WHERE region.id = $1\n           ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9d21b4d0f617893c1c512a846dcbafab8d36cea8b6499e734fc5eb389ac67223"
+}

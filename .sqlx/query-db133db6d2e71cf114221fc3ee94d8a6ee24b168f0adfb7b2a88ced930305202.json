@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT first_name\n            FROM accounts.users user_\n            LEFT JOIN services.farms farm\n                ON user_.id = farm.owner_id\n            LEFT JOIN services.locations location_\n                ON farm.id = location_.farm_id\n            LEFT JOIN services.harvests harvest\n            ON location_.id = harvest.location_id\n            WHERE (\n                user_.id = $1\n                AND location_.id = $2\n                AND harvest.id = $3\n            )\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "first_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "db133db6d2e71cf114221fc3ee94d8a6ee24b168f0adfb7b2a88ced930305202"
+}

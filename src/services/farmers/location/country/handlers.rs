@@ -6,10 +6,7 @@ use axum::{
 };
 
 use crate::{
-    auth::AdminUser,
-    endpoint::{EndpointRejection, EndpointResult},
-    server::state::DatabaseConnection,
-    types::ModelID,
+    auth::AdminUser, endpoint::EndpointResult, server::state::DatabaseConnection, types::ModelID,
 };
 
 use super::{forms::CountryForm, Country, CountryList};
@@ -19,50 +16,40 @@ use super::{forms::CountryForm, Country, CountryList};
 pub async fn country_list(
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<CountryList>> {
-    Country::records(db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |countries| Ok(Json(countries)),
-    )
+    let countries = Country::records(db).await?;
+    Ok(Json(countries))
 }
 
 /// Handles the `POST /locations/countries` route.
-#[tracing::instrument(skip(db, user, form))]
+#[tracing::instrument(skip(db, form))]
 pub async fn country_create(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     State(db): State<DatabaseConnection>,
     form: CountryForm,
 ) -> EndpointResult<StatusCode> {
-    Country::insert(form.into(), db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_id| Ok(StatusCode::CREATED),
-    )
+    Country::insert(form.into(), db).await?;
+    Ok(StatusCode::CREATED)
 }
 
 /// Handles the `PUT /locations/countries/:country_id` route.
-#[tracing::instrument(skip(db, user, form))]
+#[tracing::instrument(skip(db, form))]
 pub async fn country_update(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     country_id: ModelID,
     State(db): State<DatabaseConnection>,
     form: CountryForm,
 ) -> EndpointResult<StatusCode> {
-    Country::update(country_id, form.into(), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
+    Country::update(country_id, form.into(), db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `DELETE /locations/countries/:country_id` route.
-#[tracing::instrument(skip(db, user))]
+#[tracing::instrument(skip(db,))]
 pub async fn country_delete(
-    #[allow(unused_variables)] user: AdminUser,
+    _: AdminUser,
     country_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    Country::delete(country_id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_| Ok(StatusCode::NO_CONTENT),
-    )
+    Country::delete(country_id, db).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

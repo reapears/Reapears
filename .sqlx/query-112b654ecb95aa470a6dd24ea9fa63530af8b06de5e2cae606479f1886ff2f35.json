@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.harvests harvest\n                SET images = $1\n                WHERE harvest.id = $2\n\n                RETURNING (\n                    SELECT harvest.images\n                    FROM services.harvests harvest\n                    WHERE  harvest.id = $2\n                ) AS old_images\n           ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "old_images",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "112b654ecb95aa470a6dd24ea9fa63530af8b06de5e2cae606479f1886ff2f35"
+}

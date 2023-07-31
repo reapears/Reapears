@@ -6,7 +6,7 @@ use axum::{
 };
 
 use crate::{
-    auth::CurrentUser,
+    auth::{AdminUser, CurrentUser},
     endpoint::{EndpointRejection, EndpointResult},
     server::state::DatabaseConnection,
     types::ModelID,
@@ -16,7 +16,7 @@ use crate::{
 use super::{
     forms::{FarmRatingCreateForm, FarmRatingUpdateForm},
     models::{FarmRating, FarmRatingList},
-    permissions::check_user_owns_rating,
+    permissions::FarmRatingOwnershipPermission,
 };
 
 /// Handles the `GET /farms/ratings` route.
@@ -24,14 +24,13 @@ use super::{
 /// Return all ratings ever created
 #[tracing::instrument(skip(db))]
 pub async fn farm_rating_list(
+    _: AdminUser,
     pg: Option<Query<Pagination>>,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<FarmRatingList>> {
     let pagination = pg.unwrap_or_default().0;
-    FarmRating::records(pagination, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |farm_ratings| Ok(Json(farm_ratings)),
-    )
+    let farm_ratings = FarmRating::records(pagination, db).await?;
+    Ok(Json(farm_ratings))
 }
 
 /// Handles the `GET /farms/:farm_id/ratings` route.
@@ -42,12 +41,8 @@ pub async fn farm_ratings(
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<FarmRatingList>> {
     let pagination = pg.unwrap_or_default().0;
-    FarmRating::records_for_farm(farm_id, pagination, db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |farm_ratings| Ok(Json(farm_ratings)),
-        )
+    let farm_ratings = FarmRating::records_for_farm(farm_id, pagination, db).await?;
+    Ok(Json(farm_ratings))
 }
 
 /// Handles the `GET /farms/ratings/rating_id` route.
@@ -56,14 +51,9 @@ pub async fn farm_rating_detail(
     rating_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<FarmRating>> {
-    FarmRating::find(rating_id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |farm_rating| {
-            farm_rating.map_or_else(
-                || Err(EndpointRejection::NotFound("Farm rating not found".into())),
-                |farm_rating| Ok(Json(farm_rating)),
-            )
-        },
+    FarmRating::find(rating_id, db).await?.map_or_else(
+        || Err(EndpointRejection::NotFound("Farm rating not found".into())),
+        |farm_rating| Ok(Json(farm_rating)),
     )
 }
 
@@ -75,45 +65,28 @@ pub async fn farm_rating_create(
     State(db): State<DatabaseConnection>,
     form: FarmRatingCreateForm,
 ) -> EndpointResult<StatusCode> {
-    FarmRating::insert(form.data(farm_id, user.id), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_rating_id| Ok(StatusCode::CREATED),
-        )
+    FarmRating::insert(form.data(farm_id, user.id), db).await?;
+    Ok(StatusCode::CREATED)
 }
 
 /// Handles the `PUT /farms/ratings/rating_id` route.
-#[tracing::instrument(skip(db, user, form))]
+#[tracing::instrument(skip(db, form))]
 pub async fn farm_rating_update(
-    #[allow(unused_variables)] user: CurrentUser,
     rating_id: ModelID,
     State(db): State<DatabaseConnection>,
     form: FarmRatingUpdateForm,
 ) -> EndpointResult<StatusCode> {
-    FarmRating::update(rating_id, form.into(), db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
+    FarmRating::update(rating_id, form.into(), db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `DELETE /farms/ratings/rating_id` route.
-#[tracing::instrument(skip(db, user))]
+#[tracing::instrument(skip(db))]
 pub async fn farm_rating_delete(
-    user: CurrentUser,
+    _: FarmRatingOwnershipPermission,
     rating_id: ModelID,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    //Review redirection
-    let check_permissions = check_user_owns_rating(user.id, rating_id, db.clone());
-    match check_permissions.await {
-        Ok(()) => FarmRating::delete(rating_id, db).await.map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::NO_CONTENT),
-        ),
-
-        Err(err) => Err(err),
-    }
+    FarmRating::delete(rating_id, db).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

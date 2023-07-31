@@ -13,9 +13,6 @@ pub mod db;
 pub mod forms;
 pub mod handlers;
 
-/// Password token expiry time
-pub const PASSWORD_TOKEN_EXPIRY_TIME: i64 = 30; // 30 minutes
-
 /// Password database model
 #[derive(Debug)]
 pub struct PasswordModel;
@@ -45,7 +42,7 @@ pub async fn check_password(
 #[must_use]
 pub fn password_reset_token_expired(created_at: time::OffsetDateTime) -> bool {
     let now = time::OffsetDateTime::now_utc();
-    let threshold = now - time::Duration::minutes(PASSWORD_TOKEN_EXPIRY_TIME);
+    let threshold = now - time::Duration::minutes(crate::PASSWORD_TOKEN_EXPIRY_TIME);
     created_at < threshold
 }
 

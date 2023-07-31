@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.cultivars cultivar\n                SET image = $1\n                WHERE cultivar.id = $2\n\n                RETURNING (\n                    SELECT cultivar.image\n                    FROM services.cultivars cultivar\n                    WHERE  cultivar.id = $2\n                ) AS old_image\n           ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "old_image",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "17d65d03f8cade9be47d7bf207b539439bd4c0b834b142088aa158ddcc0e1e74"
+}

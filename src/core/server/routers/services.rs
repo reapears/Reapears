@@ -5,14 +5,12 @@ use axum::{
     routing::{get, post, put},
     Router,
 };
-// use tower_http::limit::RequestBodyLimitLayer;
 
 use crate::{
     features::harvest_subscription::handlers::{
         harvest_subscription_create, harvest_subscription_delete, harvest_subscription_list,
         harvest_subscription_update,
     },
-    // files::IMAGE_MAX_SIZE,
     server::state::ServerState,
     services::{
         farmers::farm::handlers::{
@@ -73,8 +71,7 @@ pub fn routers() -> Router<ServerState> {
         .route(
             "/cultivars/:cultivar_id/photo",
             post(cultivar_image_upload)
-                .layer(DefaultBodyLimit::disable())
-                // .layer(RequestBodyLimitLayer::new(IMAGE_MAX_SIZE))
+                .layer(DefaultBodyLimit::max(crate::IMAGE_MAX_SIZE))
                 .delete(cultivar_image_delete),
         )
         // Harvest
@@ -88,10 +85,9 @@ pub fn routers() -> Router<ServerState> {
         .route(
             "/harvests/:harvest_id/photos",
             post(harvest_image_uploads)
-                .layer(DefaultBodyLimit::disable())
-                // .layer(RequestBodyLimitLayer::new(
-                //     IMAGE_MAX_SIZE * HARVEST_MAX_IMAGE as usize,
-                // ))
+                .layer(DefaultBodyLimit::max(
+                    crate::IMAGE_MAX_SIZE * crate::HARVEST_MAX_IMAGE as usize,
+                ))
                 .delete(harvest_image_delete),
         )
         .route(
@@ -110,7 +106,9 @@ pub fn routers() -> Router<ServerState> {
         )
         .route(
             "/farms/:farm_id/logo",
-            post(farm_logo_upload).delete(farm_logo_delete),
+            post(farm_logo_upload)
+                .layer(DefaultBodyLimit::max(crate::IMAGE_MAX_SIZE))
+                .delete(farm_logo_delete),
         )
         .route(
             "/farms/:farm_id/locations",

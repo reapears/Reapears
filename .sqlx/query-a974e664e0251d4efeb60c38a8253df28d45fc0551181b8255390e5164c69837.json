@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE accounts.emails address\n                SET verified = TRUE,\n                    token = NULL,\n                    token_generated_at = NULL\n                WHERE address.email = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a974e664e0251d4efeb60c38a8253df28d45fc0551181b8255390e5164c69837"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM features.message_status status\n                WHERE status.message_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c510bfb8ea66ca77f53c8a6890f7a97caece70315c72649355f28bef2b1d28f5"
+}

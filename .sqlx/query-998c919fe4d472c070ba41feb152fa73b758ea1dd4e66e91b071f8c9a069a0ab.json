@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM accounts.users user_\n                WHERE user_.id IN (\n                    SELECT address.user_id\n                    FROM accounts.emails address\n                    WHERE address.email = $1\n                )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "998c919fe4d472c070ba41feb152fa73b758ea1dd4e66e91b071f8c9a069a0ab"
+}

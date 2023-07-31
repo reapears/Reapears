@@ -45,6 +45,7 @@ tower-http = { version = "0.4.3", features = [
     "propagate-header",
     "request-id",
     "sensitive-headers",
+    "set-header",
     "timeout",
     "trace",
     "util",
@@ -88,7 +89,7 @@ geo = { version = "0.26.0", features = ["use-serde"] }
 uuid = { version = "1.4.1", features = ["v7", "fast-rng", "serde"] }
 time = { version = "0.3.23", features = ["serde-human-readable"] }
 phonenumber = "0.3.2"
-rust_decimal = "1.30.0"
+rust_decimal = "1.31.0"
 
 # 
 tracing = "0.1.37"
@@ -108,10 +109,12 @@ dotenvy = "0.15.7"
 # insta = "1.31.0"
 
 
-# Profiles Section
+# Profiles Sections
+
 [profile.release]
-lto = "fat"
+lto = true
 codegen-units = 1
+opt-level = 3
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3

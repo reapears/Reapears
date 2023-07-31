@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH farm_stats AS(\n                SELECT farm.id AS farm_id, COUNT(harvest.id)\n                FROM services.active_farms farm\n                LEFT JOIN services.locations location_\n                    ON farm.id = location_.farm_id\n                LEFT JOIN services.harvests harvest\n                    ON location_.id = harvest.location_id\n\n                WHERE farm.owner_id = $1\n                GROUP BY farm.id\n            )\n\n            UPDATE services.farms farm\n                SET deleted = true,\n                    owner_id = NULL,\n                    deleted_at = $2\n\n            WHERE farm.id IN(\n                SELECT stat.farm_id\n                FROM farm_stats stat\n                WHERE stat.count > 0\n            );\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "93696e013df77c3b8774766df4391647f902398ebe7560301576c1d4cfd3d0ab"
+}

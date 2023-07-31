@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE services.locations location_\n            SET deleted = true,\n                deleted_at = $1\n            WHERE location_.id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b8c1abc2fdfb8e16ec56721b6513581a3ec457596e88adfa1ecf581b286f0911"
+}

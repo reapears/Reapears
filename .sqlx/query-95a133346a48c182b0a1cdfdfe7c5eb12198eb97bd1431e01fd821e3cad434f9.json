@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.regions region\n                SET name = COALESCE($1, region.name),\n                    country_id = COALESCE($2, region.country_id)\n                WHERE region.id = $3\n           ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "95a133346a48c182b0a1cdfdfe7c5eb12198eb97bd1431e01fd821e3cad434f9"
+}

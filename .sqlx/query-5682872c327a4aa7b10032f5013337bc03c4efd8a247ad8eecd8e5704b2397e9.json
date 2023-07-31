@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT user_.id AS user_id,\n                user_.is_farmer,\n                user_.is_staff,\n                user_.is_superuser\n            FROM auth.sessions sessions\n            LEFT JOIN accounts.users user_ \n                ON sessions.user_id = user_.id\n\n            WHERE sessions.token = $1;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "is_farmer",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_staff",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_superuser",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5682872c327a4aa7b10032f5013337bc03c4efd8a247ad8eecd8e5704b2397e9"
+}

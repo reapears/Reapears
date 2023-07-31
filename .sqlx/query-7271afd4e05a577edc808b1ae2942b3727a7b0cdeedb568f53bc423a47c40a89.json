@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO services.farms(\n                    id,\n                    owner_id,\n                    name,\n                    contact_number,\n                    contact_email,\n                    founded_at,\n                    registered_on,\n                    deleted\n                )\n                VALUES($1, $2, $3, $4, $5, $6, $7, false);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7271afd4e05a577edc808b1ae2942b3727a7b0cdeedb568f53bc423a47c40a89"
+}

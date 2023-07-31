@@ -1,8 +1,4 @@
-//! Chat Handler
-#![allow(dead_code)]
-#![allow(clippy::unused_async)]
-#![allow(unused_imports)]
-#![allow(unused_mut)]
+//! `DirectMessage` system impls
 
 use axum::{
     extract::{
@@ -12,7 +8,10 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use futures_util::stream::{SplitSink, SplitStream, StreamExt};
+use futures_util::{
+    stream::{SplitSink, SplitStream, StreamExt},
+    SinkExt,
+};
 
 use crate::{
     auth::CurrentUser,
@@ -21,14 +20,14 @@ use crate::{
 };
 
 use super::{
-    forms::IncomingChat,
-    models::{Conversation, Conversations, DirectMessage},
-    ChatBroadcast, ChatMessages,
+    forms::{IncomingMessage, IncomingMessageError},
+    models::{Conversation, Conversations},
+    BroadcastMessage, ChatFeed, MessageListener,
 };
 
 /// Handles the `GET account/users/dms` route.
 #[tracing::instrument(skip(db))]
-pub async fn user_direct_messages(
+pub async fn user_conversations(
     user: CurrentUser,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<Conversations>> {
@@ -38,92 +37,151 @@ pub async fn user_direct_messages(
     )
 }
 
-/// jh
-pub async fn websocket_handler(
+/// Sets up direct message chat system.
+#[allow(clippy::unused_async)]
+pub async fn direct_message_websocket(
     ws: WebSocketUpgrade,
     user: CurrentUser,
     State(state): State<ServerState>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(|socket| chat_handler(socket, user, state))
+    ws.on_upgrade(|socket| direct_message_handler(socket, user, state))
 }
 
-/// hh
-async fn chat_handler(stream: WebSocket, user: CurrentUser, state: ServerState) {
-    let (mut outgoing, mut incoming) = stream.split();
-
-    // Announce user online
+/// Manages connected user chat.
+async fn direct_message_handler(stream: WebSocket, user: CurrentUser, state: ServerState) {
     let user_id = user.id;
-    state.chat.send(IncomingChat::NotifyUserConnected(user_id));
+    let chat = state.chat.clone();
+    let (outgoing, incoming) = stream.split();
 
-    // Forward messages to user sent via ws
-    let mut chat_messages = state.chat.message_listener();
+    // Broadcast user connected
+    chat.broadcast(BroadcastMessage::user_connected(user_id));
+
+    // Listens for message sent in the message queue
+    // and forward them to user if it is intended for them.
     let mut send_messages = tokio::spawn({
         let user = user.clone();
-        async move { send_incoming_messages(user, chat_messages, outgoing).await }
+        let message_listener = state.chat.subscribe();
+        async move { listen_send_messages(user, message_listener, outgoing).await }
     });
 
-    // Receive messages from via ws
-    let chat_broadcast = state.chat.clone();
-    let db = state.database.clone();
-    let mut recv_messages =
-        tokio::spawn(
-            async move { recv_incoming_messages(user, chat_broadcast, incoming, db).await },
-        );
+    // Receive incoming messages sent by user via websocket
+    // and process them.
+    let mut recv_messages = tokio::spawn({
+        let chat = state.chat.clone();
+        let db = state.database.clone();
+        async move { recv_broadcast_messages(user, chat, incoming, db).await }
+    });
 
     tokio::select! {
         _ = (&mut send_messages) => recv_messages.abort(),
         _ = (&mut recv_messages) => send_messages.abort(),
     };
 
-    // Announce user disconnected
-    state
-        .chat
-        .send(IncomingChat::NotifyUserDisconnected(user_id));
+    // Broadcast user disconnected
+    chat.broadcast(BroadcastMessage::user_disconnected(user_id));
 }
 
-/// Receive Incoming-messages sent by the user via ws
-/// and forward them to connected listeners
-#[allow(clippy::unused_async)]
-async fn recv_incoming_messages(
-    _user: CurrentUser,
-    _chat: ChatBroadcast,
-    _incoming: SplitStream<WebSocket>,
-    _db: DatabaseConnection,
+/// Listens for `BroadcastsMessage`s sent in message queue
+/// and forward them user via ws if it is intended for them.
+async fn listen_send_messages(
+    user: CurrentUser,
+    mut messages: MessageListener,
+    mut outgoing: SplitSink<WebSocket, Message>,
 ) {
-    // while let Some(Ok(Message::Text(msg))) = incoming.next().await {
-    //     if let Ok(msg) = serde_json::from_str(&msg) {
-    //         match msg {
-    //             IncomingChat::NewMessage(msg) => {
-    //                 let values = msg.insert_data(user.id);
-    //                 let direct_message = values.clone().direct_message();
-    //                 if let Ok(_)  = Conversation::insert(values).await{
-    //                     chat.send(direct_message);
-    //                 }
-    //                 // Conversation::
-    //             }
-    //             IncomingChat::DeleteMessage(req) => {}
-    //         }
-
-    //         let incoming_msg: IncomingChat = serde_json::from_str(&msg);
-    //         // save to the database and broadcast it
-    //         chat.send(incoming_msg);
-    //     }
-    // }
+    while let Ok(msg) = messages.listen().await {
+        // Forward the message if it is intended for this user.
+        if let Some(forward_msg) = msg.message(user.id) {
+            let forward_msg = serde_json::to_string(&forward_msg).unwrap();
+            if outgoing.send(Message::Text(forward_msg)).await.is_err() {
+                break;
+            }
+        }
+    }
 }
 
-/// Send Incoming-messages to the user via ws
-#[allow(clippy::unused_async)]
-async fn send_incoming_messages(
-    _user: CurrentUser,
-    _messages: ChatMessages,
-    _outgoing: SplitSink<WebSocket, Message>,
+/// Receive `IncomingMessage`s sent by the user via ws
+/// and broadcast them to subscribed message listeners.
+async fn recv_broadcast_messages(
+    user: CurrentUser,
+    chat: ChatFeed,
+    mut incoming: SplitStream<WebSocket>,
+    db: DatabaseConnection,
 ) {
-    // todo!();
-    // while let Ok(msg) = messages.recv().await {
-    //     // on message just check if the message send to me
-    //     let msg = serde_json::to_string(msg).unwrap();
-    //     if outgoing.send(Message::Text(msg)).await.is_err() {
-    //         break;
-    //     }
-    // }
+    // Listens for incoming message and process them.
+    while let Some(Ok(Message::Text(msg))) = incoming.next().await {
+        let msg_result: Result<IncomingMessage, _> = serde_json::from_str(&msg);
+        match msg_result {
+            Ok(msg) => process_incoming_message(user.clone(), msg, chat.clone(), db.clone()).await,
+            Err(err) => {
+                tracing::error!("IncomingMessage deserialization error: {:?}", err);
+                chat.broadcast(BroadcastMessage::message_error(
+                    user.id,
+                    IncomingMessageError::UnprocessableEntity,
+                ));
+            }
+        }
+    }
+}
+
+// Process IncomingMessages
+async fn process_incoming_message(
+    user: CurrentUser,
+    msg: IncomingMessage,
+    chat: ChatFeed,
+    db: DatabaseConnection,
+) {
+    match msg {
+        IncomingMessage::NewMessage(new_msg) => {
+            let insert_data = new_msg.insert_data(user.id);
+            let direct_msg = insert_data.direct_message();
+            match Conversation::insert(insert_data, db).await {
+                Ok(_) => chat.broadcast(BroadcastMessage::direct_message(
+                    direct_msg.receiver_id,
+                    direct_msg,
+                )),
+                Err(_err) => {
+                    chat.broadcast(BroadcastMessage::message_error(
+                        user.id,
+                        IncomingMessageError::InternalServerError,
+                    ));
+                }
+            }
+        }
+
+        IncomingMessage::MessageIsRead(msg_read_update) => {
+            let message_ids = msg_read_update.messages.clone();
+            match Conversation::update_is_read(user.id, message_ids, db).await {
+                Ok(_) => chat.broadcast(BroadcastMessage::message_is_read(
+                    msg_read_update.sender_id,
+                    msg_read_update,
+                )),
+                Err(_err) => {
+                    chat.broadcast(BroadcastMessage::message_error(
+                        user.id,
+                        IncomingMessageError::InternalServerError,
+                    ));
+                }
+            }
+        }
+
+        IncomingMessage::MessageDelete(msg) => {
+            match Conversation::delete(user.id, msg.message_id, db).await {
+                Ok(_) => {}
+                Err(_err) => {
+                    chat.broadcast(BroadcastMessage::message_error(
+                        user.id,
+                        IncomingMessageError::InternalServerError,
+                    ));
+                }
+            }
+        }
+
+        IncomingMessage::UserConnected => {
+            chat.broadcast(BroadcastMessage::user_connected(user.id));
+        }
+
+        IncomingMessage::UserDisconnected => {
+            chat.broadcast(BroadcastMessage::user_disconnected(user.id));
+        }
+    }
 }

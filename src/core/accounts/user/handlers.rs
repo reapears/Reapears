@@ -12,13 +12,13 @@ use crate::{
     endpoint::{EndpointRejection, EndpointResult},
     mail::Mail,
     server::state::DatabaseConnection,
-    settings::SERVER_DOMAIN,
     types::Pagination,
+    SERVER_DOMAIN_NAME,
 };
 
 use super::{
     account_confirm_expiry_time,
-    forms::{AccountLockForm, AccountUnlockForm, SignUpForm},
+    forms::{AccountLockForm, SignUpForm, UserIdForm},
     models::{User, UserList},
 };
 
@@ -30,10 +30,8 @@ pub async fn user_list(
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<Json<UserList>> {
     let pagination = pg.unwrap_or_default().0;
-    User::records(pagination, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |users| Ok(Json(users)),
-    )
+    let users = User::records(pagination, db).await?;
+    Ok(Json(users))
 }
 
 /// Handles the `POST /account/signup` route.
@@ -51,7 +49,8 @@ pub async fn signup(
     User::insert(values, db).await?;
 
     // Send confirmation email
-    let link = format!("{SERVER_DOMAIN}/account/confirm?token={plaintext}");
+    let domain = SERVER_DOMAIN_NAME.get().unwrap();
+    let link = format!("{domain}/account/confirm?token={plaintext}");
     let email = outlook.account_confirm(&first_name, &email_address, &link)?;
     outlook.send(email).await?;
 
@@ -104,10 +103,8 @@ pub async fn account_lock(
     State(db): State<DatabaseConnection>,
     form: AccountLockForm,
 ) -> EndpointResult<StatusCode> {
-    User::lock_account(form.into(), db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_| Ok(StatusCode::OK),
-    )
+    User::lock_account(form.into(), db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `POST /account/unlock` route.
@@ -115,12 +112,10 @@ pub async fn account_lock(
 pub async fn account_unlock(
     user: SuperUser,
     State(db): State<DatabaseConnection>,
-    form: AccountUnlockForm,
+    form: UserIdForm,
 ) -> EndpointResult<StatusCode> {
-    User::unlock_account(form.user_id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_| Ok(StatusCode::OK),
-    )
+    User::unlock_account(form.user_id, db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `DELETE /account/deactivate` route.
@@ -131,8 +126,50 @@ pub async fn account_deactivate(
     user: CurrentUser,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<StatusCode> {
-    User::delete(user.id, db).await.map_or_else(
-        |_err| Err(EndpointRejection::internal_server_error()),
-        |_| Ok(StatusCode::NO_CONTENT),
-    )
+    User::delete(user.id, db).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Handles the `POST /account/unlock` route.
+#[tracing::instrument(skip(db))]
+pub async fn user_make_superuser(
+    _: SuperUser,
+    State(db): State<DatabaseConnection>,
+    form: UserIdForm,
+) -> EndpointResult<StatusCode> {
+    User::set_superuser(form.user_id, true, db).await?;
+    Ok(StatusCode::OK)
+}
+
+/// Handles the `POST /account/unlock` route.
+#[tracing::instrument(skip(db))]
+pub async fn user_revoke_superuser(
+    _: SuperUser,
+    State(db): State<DatabaseConnection>,
+    form: UserIdForm,
+) -> EndpointResult<StatusCode> {
+    User::set_superuser(form.user_id, false, db).await?;
+    Ok(StatusCode::OK)
+}
+
+/// Handles the `POST /account/unlock` route.
+#[tracing::instrument(skip(db))]
+pub async fn user_make_staff(
+    _: SuperUser,
+    State(db): State<DatabaseConnection>,
+    form: UserIdForm,
+) -> EndpointResult<StatusCode> {
+    User::set_staff(form.user_id, true, db).await?;
+    Ok(StatusCode::OK)
+}
+
+/// Handles the `POST /account/unlock` route.
+#[tracing::instrument(skip(db))]
+pub async fn user_revoke_staff(
+    _: SuperUser,
+    State(db): State<DatabaseConnection>,
+    form: UserIdForm,
+) -> EndpointResult<StatusCode> {
+    User::set_staff(form.user_id, false, db).await?;
+    Ok(StatusCode::OK)
 }

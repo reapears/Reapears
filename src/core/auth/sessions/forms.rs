@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 
 use crate::{
     accounts::{user::models::User, AccountDelete},
-    auth::{verify_password, Token, TokenHash, INVALID_CREDENTIALS},
+    auth::{verify_password, Token, TokenHash},
     endpoint::{
         validators::{TransformString, ValidateString},
         EndpointRejection, EndpointResult,
@@ -48,8 +48,10 @@ impl LoginForm {
         // Clean the data
         self.clean_data();
 
-        self.email.validate_len(1, 255, INVALID_CREDENTIALS)?;
-        self.password.validate_len(0, 25, INVALID_CREDENTIALS)?;
+        self.email
+            .validate_len(1, 255, crate::INVALID_CREDENTIALS_ERR_MSG)?;
+        self.password
+            .validate_len(0, 25, crate::INVALID_CREDENTIALS_ERR_MSG)?;
 
         Ok(())
     }
@@ -109,7 +111,7 @@ where
         let email = login.email.clone();
 
         let Some(user) = Session::find_user_by_email(email.clone(), db.clone()).await? else{
-            return Err(EndpointRejection::BadRequest(INVALID_CREDENTIALS.into()));
+            return Err(EndpointRejection::BadRequest(crate::INVALID_CREDENTIALS_ERR_MSG.into()));
         };
 
         if !user.email_verified {

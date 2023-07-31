@@ -5,9 +5,10 @@ use lettre::{
     Message,
 };
 
-use crate::error::{ServerError, ServerResult};
-
-use super::{EMAIL_DISPLAY_NAME, REAPEARS_EMAIL};
+use crate::{
+    error::{ServerError, ServerResult},
+    APP_NAME,
+};
 
 /// Email message
 #[derive(Debug, Clone)]
@@ -17,20 +18,14 @@ pub struct EmailMessage {
 
 impl EmailMessage {
     /// Create a new email for outlook client
-    pub fn from_outlook(
-        to: &str,
+    pub fn from_server(
+        from_email: &str,
+        email_to: &str,
         subject: &str,
         plain_text: String,
         html: String,
     ) -> ServerResult<Self> {
-        Self::write(
-            EMAIL_DISPLAY_NAME,
-            REAPEARS_EMAIL,
-            to,
-            subject,
-            plain_text,
-            html,
-        )
+        Self::write(APP_NAME, from_email, email_to, subject, plain_text, html)
     }
 
     /// Create new multipart email
@@ -71,7 +66,7 @@ impl EmailMessage {
     /// Create new plain text email message
     pub fn write_plain(from: &str, to: &str, subject: String, body: String) -> ServerResult<Self> {
         let Ok(message) = Message::builder()
-            .from(format!("{EMAIL_DISPLAY_NAME} <{from}>").parse().unwrap())
+            .from(format!("{APP_NAME} <{from}>", ).parse().unwrap())
             .to(format!("<{to}>").parse().unwrap())
             .subject(subject)
             .header(ContentType::TEXT_PLAIN)

@@ -11,9 +11,6 @@ use crate::{
 /// A list of user ids that requested for account deletion.
 pub type AccountDeleteRequests = Vec<ModelID>;
 
-/// Max numbers of days a user has before their account deleted permanently.
-pub const MAX_DAYS_TO_DELETE_ACCOUNT: u8 = 90;
-
 /// A Handler for accounts that requested to be deleted.
 #[derive(Debug, Clone)]
 pub struct AccountDelete;
@@ -63,7 +60,7 @@ impl AccountDelete {
                     // such that the delete_request_at <= now_utc()
                     .filter(|rec| {
                         let request_date = rec.delete_request_at
-                            - Duration::days(i64::from(MAX_DAYS_TO_DELETE_ACCOUNT));
+                            - Duration::days(i64::from(crate::MAX_DAYS_TO_DELETE_ACCOUNT));
                         request_date.date() <= now
                     })
                     .map(|rec| ModelID::from(rec.user_id))

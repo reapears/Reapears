@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.harvests harvest\n                SET images = NULL\n                WHERE harvest.id = $1\n\n                RETURNING (\n                    SELECT harvest.images\n                    FROM services.harvests harvest\n                    WHERE  harvest.id = $1\n                ) AS images\n           ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "images",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b28567d5daafca32d9818832d45e6927940a37b6a6ddd14e59ed6d44fd1131b5"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.countries country\n                SET name = COALESCE($1, country.name)\n                WHERE country.id = $2\n           ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0bf54e4fa3c25d736a8ac9d876c853a9706161d9105ab76fcefcaef94c2f3e8a"
+}

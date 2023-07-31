@@ -6,18 +6,13 @@ use tokio::{fs, task::JoinSet};
 use crate::error::{ServerError, ServerResult};
 
 mod handler;
-mod images;
+mod img;
 mod uploaded;
 
 pub use handler::accept_uploads;
-pub use images::{save_image, ImageFile};
+pub use img::UploadedImage;
 pub use uploaded::UploadedFile;
 
-/// Image formats stored on the server
-pub const IMAGE_FORMATS: [&str; 2] = ["jpg", "webp"];
-
-/// Image maximum size allowed on the server
-pub const IMAGE_MAX_SIZE: usize = 20 * 1024 * 1024; // 20 * 1024 * 1024 /* 20mb */
 /// Saves file on the filesystem
 #[tracing::instrument(skip(content))]
 pub async fn save_file(path: &Path, content: &[u8]) -> ServerResult<PathBuf> {
@@ -101,8 +96,9 @@ pub fn get_jpg_path(paths: Vec<PathBuf>) -> ServerResult<String> {
 /// Get all image formats paths saved on the server
 #[must_use]
 pub fn saved_paths(upload_dir: &str, file: &str) -> Vec<PathBuf> {
-    IMAGE_FORMATS
+    crate::IMAGE_OUTPUT_FORMATS
         .into_iter()
+        .map(|ext| ext.extensions_str()[0])
         .map(|ext| PathBuf::from(upload_dir).join(file).with_extension(ext))
         .collect()
 }

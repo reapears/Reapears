@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE features.harvest_subscriptions subscription\n                SET harvest_id = COALESCE($1, subscription.harvest_id),\n                    amount = COALESCE($2, subscription.amount),\n                    expires_at = COALESCE($3, subscription.expires_at)\n                WHERE subscription.id = $4\n           ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Numeric",
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "25e58a9298c3dea8ae30c1c1cfab759446d30c95f1335c6902bedd00a2ae8221"
+}

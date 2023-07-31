@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                 UPDATE services.farms farm\n                 SET logo = $1\n                 WHERE farm.id = $2\n \n                 RETURNING (\n                     SELECT farm.logo\n                     FROM services.farms farm\n                     WHERE farm.id = $2\n                 ) AS old_logo\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "old_logo",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "04759e9b55f6bffb4d92c90961547f985e8142b1ef6562bb75d81eea1745a96a"
+}

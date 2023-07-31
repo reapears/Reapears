@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE accounts.users\n            SET is_farmer = $1\n            WHERE id = $2;\n       ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "76cf234b1a57c3e5fcfd4011de7c786afefdfc215e803d0d65951410f55d4155"
+}

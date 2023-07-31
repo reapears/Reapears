@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT user_.first_name,\n                    address.email\n                FROM accounts.users user_\n                LEFT JOIN accounts.emails address\n                    ON user_.id = address.user_id\n                WHERE user_.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "first_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "94625b4793cde1a705e99507538cffd912332822eb88c7c053a822ce6240bb04"
+}

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(message.id) AS message_count\n            FROM features.direct_messages message\n            WHERE (\n                message.receiver_id = $1 \n                AND\n               message.id = ANY($2)\n            );\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "message_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "4af8b52f788a890e20e5c3f2b18cbcf5c2538fd51100741f3664e9790a0387e8"
+}

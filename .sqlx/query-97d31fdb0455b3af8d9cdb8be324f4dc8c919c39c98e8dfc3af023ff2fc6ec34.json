@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.cultivars cultivar\n                SET name = COALESCE($1, cultivar.name),\n                    category_id = COALESCE($2, cultivar.category_id)\n                WHERE cultivar.id = $3\n           ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "97d31fdb0455b3af8d9cdb8be324f4dc8c919c39c98e8dfc3af023ff2fc6ec34"
+}

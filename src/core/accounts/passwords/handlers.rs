@@ -12,7 +12,7 @@ use crate::{
     endpoint::{EndpointRejection, EndpointResult},
     mail::Mail,
     server::state::DatabaseConnection,
-    settings::SERVER_DOMAIN,
+    SERVER_DOMAIN_NAME,
 };
 
 use super::{
@@ -47,12 +47,8 @@ pub async fn password_change(
     form: PasswordChangeForm,
 ) -> EndpointResult<StatusCode> {
     let password_hash = form.try_phc().await?;
-    PasswordModel::update(current_user.id, password_hash, db)
-        .await
-        .map_or_else(
-            |_err| Err(EndpointRejection::internal_server_error()),
-            |_| Ok(StatusCode::OK),
-        )
+    PasswordModel::update(current_user.id, password_hash, db).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Handles the `POST /account/reset-password` route.
@@ -102,7 +98,8 @@ pub async fn password_forgot(
     PasswordModel::insert_token(user_id, hash, db).await?;
 
     // Send password reset email
-    let link = format!("{SERVER_DOMAIN}/account/reset-password?token={plaintext}");
+    let domain = SERVER_DOMAIN_NAME.get().unwrap();
+    let link = format!("{domain}/account/reset-password?token={plaintext}");
     let email = outlook.password_reset(&first_name, &email_address, &link)?;
     outlook.send(email).await?;
 

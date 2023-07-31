@@ -1,32 +1,20 @@
 //! Response rejection impls
 
-#![allow(clippy::enum_glob_use)]
+use std::fmt;
 
 use axum::{
     extract::rejection::JsonRejection,
-    // headers,
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
-    // TypedHeader,
 };
 use axum_extra::extract::PrivateCookieJar;
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use std::fmt;
-
 use crate::error::{ServerError, ServerErrorKind};
-use EndpointRejection::*;
 
 pub type EndpointResult<T> = Result<T, EndpointRejection>;
-
-// pub type LocationHeader = (&static str, String);
-
-// /// Contract a location header
-// pub fn LocationHeader(url: &str) -> TypedHeader<headers::Location> {
-//     TypedHeader(headers::Location(headers::HeaderValue::from_static(url)))
-// }
 
 /// A response returned by handlers
 /// when could not get intended response
@@ -95,11 +83,14 @@ impl EndpointRejection {
     }
 }
 
-impl From<ServerError> for EndpointRejection {
-    fn from(err: ServerError) -> Self {
-        match err.kind {
+impl<T> From<T> for EndpointRejection
+where
+    T: Into<ServerError>,
+{
+    fn from(err: T) -> Self {
+        match err.into().kind {
             ServerErrorKind::UserError(err) => err,
-            _ => Self::InternalServerError(ServerError::MESSAGE.into()),
+            _ => Self::internal_server_error(),
         }
     }
 }
@@ -108,31 +99,33 @@ impl IntoResponse for EndpointRejection {
     fn into_response(self) -> Response {
         let (status, rejection_response) = match self {
             // Client Errors
-            BadRequest(response) => (StatusCode::BAD_REQUEST, response),
-            Unauthorized(response) => (StatusCode::UNAUTHORIZED, response),
-            Forbidden(response) => (StatusCode::FORBIDDEN, response),
-            NotFound(response) => (StatusCode::NOT_FOUND, response),
-            MethodNotAllowed(response) => (StatusCode::METHOD_NOT_ALLOWED, response),
-            NotAcceptable(response) => (StatusCode::NOT_ACCEPTABLE, response),
-            RequestTimeout(response) => (StatusCode::REQUEST_TIMEOUT, response),
-            Conflict(response) => (StatusCode::CONFLICT, response),
-            LengthRequired(response) => (StatusCode::LENGTH_REQUIRED, response),
-            PayloadTooLarge(response) => (StatusCode::PAYLOAD_TOO_LARGE, response),
-            UnsupportedMediaType(response) => (StatusCode::UNSUPPORTED_MEDIA_TYPE, response),
-            UpgradeRequired(response) => (StatusCode::UPGRADE_REQUIRED, response),
-            UnprocessableEntity(response) => (StatusCode::UNPROCESSABLE_ENTITY, response),
-            TooManyRequests(response) => (StatusCode::TOO_MANY_REQUESTS, response),
-            UnavailableForLegalReasons(response) => {
+            Self::BadRequest(response) => (StatusCode::BAD_REQUEST, response),
+            Self::Unauthorized(response) => (StatusCode::UNAUTHORIZED, response),
+            Self::Forbidden(response) => (StatusCode::FORBIDDEN, response),
+            Self::NotFound(response) => (StatusCode::NOT_FOUND, response),
+            Self::MethodNotAllowed(response) => (StatusCode::METHOD_NOT_ALLOWED, response),
+            Self::NotAcceptable(response) => (StatusCode::NOT_ACCEPTABLE, response),
+            Self::RequestTimeout(response) => (StatusCode::REQUEST_TIMEOUT, response),
+            Self::Conflict(response) => (StatusCode::CONFLICT, response),
+            Self::LengthRequired(response) => (StatusCode::LENGTH_REQUIRED, response),
+            Self::PayloadTooLarge(response) => (StatusCode::PAYLOAD_TOO_LARGE, response),
+            Self::UnsupportedMediaType(response) => (StatusCode::UNSUPPORTED_MEDIA_TYPE, response),
+            Self::UpgradeRequired(response) => (StatusCode::UPGRADE_REQUIRED, response),
+            Self::UnprocessableEntity(response) => (StatusCode::UNPROCESSABLE_ENTITY, response),
+            Self::TooManyRequests(response) => (StatusCode::TOO_MANY_REQUESTS, response),
+            Self::UnavailableForLegalReasons(response) => {
                 (StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS, response)
             }
-            RequestHeaderFieldsTooLarge(response) => {
+            Self::RequestHeaderFieldsTooLarge(response) => {
                 (StatusCode::REQUEST_HEADER_FIELDS_TOO_LARGE, response)
             }
             //Server Errors
-            InternalServerError(response) => (StatusCode::INTERNAL_SERVER_ERROR, response),
-            NotImplemented(response) => (StatusCode::NOT_IMPLEMENTED, response),
-            ServiceUnavailable(response) => (StatusCode::SERVICE_UNAVAILABLE, response),
-            HTTPVersionNotSupported(response) => (StatusCode::HTTP_VERSION_NOT_SUPPORTED, response),
+            Self::InternalServerError(response) => (StatusCode::INTERNAL_SERVER_ERROR, response),
+            Self::NotImplemented(response) => (StatusCode::NOT_IMPLEMENTED, response),
+            Self::ServiceUnavailable(response) => (StatusCode::SERVICE_UNAVAILABLE, response),
+            Self::HTTPVersionNotSupported(response) => {
+                (StatusCode::HTTP_VERSION_NOT_SUPPORTED, response)
+            }
         };
 
         let mut response = rejection_response.0;

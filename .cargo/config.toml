@@ -1,4 +1,2 @@
 [build]
 rustflags = ["--cfg", "tokio_unstable", "--cfg", "uuid_unstable"]
-
-# rustc-wrapper = "sccache"

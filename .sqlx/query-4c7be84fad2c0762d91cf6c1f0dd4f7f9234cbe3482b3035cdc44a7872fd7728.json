@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO features.message_status(\n                message_id,\n                is_read,\n                sender_has_deleted,\n                receiver_has_deleted\n            )\n            VALUES($1, $2, $3, $4);\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4c7be84fad2c0762d91cf6c1f0dd4f7f9234cbe3482b3035cdc44a7872fd7728"
+}

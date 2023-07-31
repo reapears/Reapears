@@ -351,7 +351,7 @@ impl Harvest {
         // Delete harvest images
         if let Some(image_paths) = images {
             let paths = image_paths.clone();
-            if delete_harvest_photos(paths).await.is_err() {
+            if delete_harvest_photos(paths.into_iter()).await.is_err() {
                 tracing::error!("Io error, failed to delete harvest images at: {image_paths:?}, but harvest was deleted successfully.");
             }
         }
@@ -427,7 +427,7 @@ impl Harvest {
 
                 // Delete images from the file system
                 if let Some(images) = rec.images {
-                    tokio::spawn(async move { delete_harvest_photos(images).await });
+                    tokio::spawn(async move { delete_harvest_photos(images.into_iter()).await });
                 }
 
                 Ok(())

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE accounts.users user_\n                SET account_locked = TRUE,\n                    account_locked_reason = $1,\n                    account_locked_until = $2\n                WHERE user_.id = $3;\n               ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e9f0b4728cba03094bb1569495a712d13e3afe5784ad297cfa3999afd24fea48"
+}

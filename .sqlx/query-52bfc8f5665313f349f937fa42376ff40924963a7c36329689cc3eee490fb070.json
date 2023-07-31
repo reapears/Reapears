@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO services.countries (\n                    id, \n                    name\n                )\n                VALUES ($1, $2);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "52bfc8f5665313f349f937fa42376ff40924963a7c36329689cc3eee490fb070"
+}

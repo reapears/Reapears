@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": " \n                INSERT INTO auth.password_reset_tokens(\n                    user_id,\n                    token,\n                    token_generated_at\n                )\n                VALUES($1, $2, $3)\n\n                ON CONFLICT ON CONSTRAINT password_reset_tokens_pkey\n                DO UPDATE SET token = EXCLUDED.token,\n                            token_generated_at = EXCLUDED.token_generated_at;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a1505eca0a516dcdea684008dad67673995348d6df391c73e0743ea91ce9a7e8"
+}

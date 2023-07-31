@@ -10,7 +10,7 @@ use crate::{
     endpoint::EndpointRejection,
     error::{ServerError, ServerResult},
     server::state::DatabaseConnection,
-    services::produce::harvest::delete_harvest_photos_list,
+    services::produce::harvest::delete_harvest_photos,
     types::ModelID,
     types::Pagination,
 };
@@ -316,7 +316,9 @@ impl User {
             delete_user_farms(id, &mut tx).await?;
 
             // Cleanup active harvest images
-            tokio::spawn(async move { delete_harvest_photos_list(image_paths).await });
+            tokio::spawn(
+                async move { delete_harvest_photos(image_paths.into_iter().flatten()).await },
+            );
         }
 
         user_delete(id, &mut tx).await?;

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM services.cultivars cultivar\n                WHERE cultivar.id = $1\n                RETURNING cultivar.image\n           ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "ed377c1ec73b7f114ff2835fe711bdbecac1b7f686247c986411f7177bf46716"
+}

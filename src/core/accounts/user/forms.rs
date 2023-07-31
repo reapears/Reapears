@@ -85,7 +85,7 @@ impl SignUpForm {
             id: ModelID::new(),
             first_name: self.first_name,
             last_name: self.last_name,
-            email: EmailInsertData::new(self.email.to_lowercase(), email_token),
+            email: EmailInsertData::new(self.email, email_token),
             phc_string: hash_password(self.password).await?,
             is_staff: false,
             is_superuser: false,
@@ -199,17 +199,17 @@ where
     }
 }
 
-// ===== Account Unlock impls =====
+// ===== User id form impls =====
 
-/// User account unlock form
+/// User id form
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AccountUnlockForm {
+pub struct UserIdForm {
     pub user_id: ModelID,
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for AccountUnlockForm
+impl<B> FromRequest<ServerState, B> for UserIdForm
 where
     Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
     B: Send + 'static,

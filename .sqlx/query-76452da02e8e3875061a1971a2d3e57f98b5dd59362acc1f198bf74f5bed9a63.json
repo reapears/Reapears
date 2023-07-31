@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE auth.sessions \n                    SET last_used_at = $1\n                WHERE sessions.token = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "76452da02e8e3875061a1971a2d3e57f98b5dd59362acc1f198bf74f5bed9a63"
+}

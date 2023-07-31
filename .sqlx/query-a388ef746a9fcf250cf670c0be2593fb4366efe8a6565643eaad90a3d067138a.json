@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT message.id AS \"message_id!\",\n                    message.sender_id AS \"sender_id!\",\n                    message.receiver_id AS \"receiver_id!\", \n                    message.content AS \"message_content!\",\n                    message.sent_at AS \"message_sent_at!\",\n                    status.is_read AS is_read,\n                    status.sender_has_deleted AS sender_has_deleted,\n                    status.receiver_has_deleted AS receiver_has_deleted\n                FROM features.direct_messages message\n                LEFT JOIN features.message_status status\n                    ON message.id = status.message_id\n\n                WHERE (message.sender_id = $1 AND message.receiver_id = $2) OR\n                        (message.sender_id = $2 AND message.receiver_id = $1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "message_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "sender_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "receiver_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "message_content!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "message_sent_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_read",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "sender_has_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "receiver_has_deleted",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a388ef746a9fcf250cf670c0be2593fb4366efe8a6565643eaad90a3d067138a"
+}

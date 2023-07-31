@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM services.cultivar_categories category\n                WHERE category.id = $1\n           ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3a69e76a92569885d76f0f0afc487a6b1200529d60570acffd55efbccf8a480e"
+}

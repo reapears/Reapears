@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.farms farm\n                SET name = COALESCE($1, farm.name),\n                    contact_number = $2,\n                    contact_email = $3,\n                    founded_at = $4\n\n                WHERE id = $5;\n           ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "958d907307bcfe76224445ef2ef7a2711340197afa5e64e56c2edd88cb645283"
+}

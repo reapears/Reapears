@@ -6,7 +6,7 @@ use crate::{
     endpoint::EndpointRejection,
     error::{ServerError, ServerResult},
     server::state::DatabaseConnection,
-    services::produce::harvest::{delete_harvest_photos_list, models::HarvestIndex},
+    services::produce::harvest::{delete_harvest_photos, models::HarvestIndex},
     types::ModelID,
     types::{ModelIdentifier, ModelIndex, Pagination},
 };
@@ -16,9 +16,8 @@ use super::{
     models::{Location, LocationIndex, LocationList},
     utils::{
         archive_location, archive_location_harvests, delete_location, delete_location_harvests,
-        farm_location_count, location_archived_harvest_count, location_harvest_photos,
+        location_archived_harvest_count, location_harvest_photos,
     },
-    LOCATION_MIN_COUNT_TO_DELETE,
 };
 
 impl Location {
@@ -280,13 +279,6 @@ impl Location {
     #[tracing::instrument(name = "Delete Location", skip(db))]
     #[allow(clippy::cast_sign_loss)]
     pub async fn delete(id: ModelID, db: DatabaseConnection) -> ServerResult<()> {
-        let location_count = farm_location_count(id, db.clone()).await?;
-        // Cannot delete farm's only location
-        if location_count == LOCATION_MIN_COUNT_TO_DELETE {
-            tracing::error!("Cannot farm's only location");
-            return Err(ServerError::new("Cannot delete farms only location"));
-        }
-
         let image_paths = tokio::spawn({
             let db = db.clone();
             async move { location_harvest_photos(id, db).await }
@@ -320,7 +312,7 @@ impl Location {
         tracing::debug!("Location::delete transaction committed successfully.");
 
         // Delete active harvest images
-        delete_harvest_photos_list(image_paths).await;
+        tokio::spawn(async move { delete_harvest_photos(image_paths.into_iter().flatten()).await });
 
         Ok(())
     }

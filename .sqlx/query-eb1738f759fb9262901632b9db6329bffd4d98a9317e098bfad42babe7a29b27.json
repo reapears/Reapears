@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO features.direct_messages(\n                    id,\n                    sender_id,\n                    receiver_id,\n                    content,\n                    sent_at\n                )\n                VALUES($1, $2, $3, $4, $5);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eb1738f759fb9262901632b9db6329bffd4d98a9317e098bfad42babe7a29b27"
+}
