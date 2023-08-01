@@ -4,13 +4,14 @@ use axum::{
     error_handling::HandleErrorLayer,
     http::{header, Request},
     middleware::from_extractor_with_state,
+    response::{IntoResponse, Response},
 };
 use clap::Parser;
 use tokio::signal;
 use tower::{limit::GlobalConcurrencyLimitLayer, ServiceBuilder};
 use tower_http::{
-    classify::StatusInRangeAsFailures, cors::CorsLayer, request_id::RequestId, trace::TraceLayer,
-    ServiceBuilderExt,
+    catch_panic::CatchPanicLayer, classify::StatusInRangeAsFailures, cors::CorsLayer,
+    request_id::RequestId, trace::TraceLayer, ServiceBuilderExt,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -26,7 +27,7 @@ use cli::{Commands, ConfigCli};
 use config::Config;
 use maintenance::server_maintenance;
 use routers::server_routers;
-use state::ServerState;
+use state::{DatabaseConnection, ServerState};
 
 mod cli;
 mod config;
@@ -65,18 +66,13 @@ pub async fn run() {
                 .layer(CorsLayer::permissive()) // Must remove in production ??
                 .set_x_request_id(RequestIdGen)
                 .propagate_header(header::HeaderName::from_static("x-request-id"))
-                .catch_panic(),
+                .layer(CatchPanicLayer::custom(handle_panic)),
         )
         .with_state(state.clone());
 
     // RUN MIGRATIONS
     let db = state.database.clone();
-    sqlx::migrate!().run(&db.pool).await.unwrap();
-    // Migrate tests data for dev environment.
-    let test_data_dir = "tests/data/migrations";
-    if std::path::Path::new(test_data_dir).exists() {
-        sqlx::migrate!("tests/data/migrations").run(&db.pool).await.unwrap();
-    }
+    run_migration(db.clone()).await;
 
     // Create superuser if values given.
     let cli = ConfigCli::parse();
@@ -98,7 +94,24 @@ pub async fn run() {
         .unwrap();
 }
 
-// ==== Tracing impls =====
+// =====
+
+// RUN MIGRATIONS
+#[cfg(not(feature = "dev"))]
+async fn run_migration(db: DatabaseConnection) {
+    sqlx::migrate!().run(&db.pool).await.unwrap();
+}
+
+// RUN MIGRATIONS
+#[cfg(feature = "dev")]
+async fn run_migration(db: DatabaseConnection) {
+    sqlx::migrate!("tests/data/migrations")
+        .run(&db.pool)
+        .await
+        .unwrap();
+}
+
+// ===== Tracing impls =====
 
 /// Initializes tracing for dev environment
 /// that includes console-subscriber
@@ -120,7 +133,7 @@ pub fn tracing_init() {
     let format = tracing_subscriber::fmt::layer()
         .with_file(false)
         .with_target(false)
-        .pretty();
+        .json();
 
     tracing_subscriber::registry()
         // add the console layer to the subscriber
@@ -163,6 +176,8 @@ impl tower_http::request_id::MakeRequestId for RequestIdGen {
     }
 }
 
+// ===== Errors impls =====
+
 /// Handles errors from middleware
 #[allow(clippy::unused_async)]
 async fn handle_error(err: tower::BoxError) -> EndpointResult<()> {
@@ -184,7 +199,17 @@ async fn handle_error(err: tower::BoxError) -> EndpointResult<()> {
     Err(EndpointRejection::internal_server_error())
 }
 
-// ===== Graceful Shutdown impl =====
+/// Handles panic errors
+#[allow(clippy::needless_pass_by_value)]
+fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> Response {
+    let err = err
+        .downcast_ref::<&str>()
+        .map_or_else(|| "Unknown panic error reason", |s| s);
+    tracing::error!("Service panicked: {err}");
+    EndpointRejection::internal_server_error().into_response()
+}
+
+// ===== Graceful Shutdown impls =====
 
 /// Signal handler for initiating graceful shutdown on the server
 async fn shutdown_signal() {

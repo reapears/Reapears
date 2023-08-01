@@ -1,4 +1,4 @@
-//!
+//! Reapears entry point.
 
 use reapears::server::{self, tracing_init};
 
