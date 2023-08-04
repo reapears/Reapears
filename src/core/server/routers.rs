@@ -162,8 +162,3 @@ fn pictures_router() -> Router<ServerState> {
             get_service(serve_dir(USER_UPLOAD_DIR, MAX_AGE_ONE_DAY)),
         )
 }
-
-// /// File not found error response
-// fn file_not_found() -> ServeFile {
-//     ServeFile::new(FILE_NOT_FOUND_PATH)
-// }

@@ -20,14 +20,14 @@ tokio = { version = "1.29.1", features = [
     "macros",
     "tracing",
 ] }
-axum = { version = "0.6.19", features = [
+axum = { version = "0.6.20", features = [
     "multipart",
     "ws",
     "headers",
     "tracing",
     "macros",
 ] }
-axum-extra = { version = "0.7.5", features = ["cookie-private", "query"] }
+axum-extra = { version = "0.7.7", features = ["cookie-private", "query"] }
 tower = { version = "0.4.13", features = [
     "buffer",
     "limit",
@@ -86,7 +86,7 @@ rand = "0.8.5"
 itertools = "0.11.0"
 geo = { version = "0.26.0", features = ["use-serde"] }
 uuid = { version = "1.4.1", features = ["v7", "fast-rng", "serde"] }
-time = { version = "0.3.23", features = ["serde-human-readable"] }
+time = { version = "0.3.25", features = ["serde-human-readable"] }
 phonenumber = "0.3.2"
 rust_decimal = "1.31.0"
 

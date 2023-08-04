@@ -1,4 +1,5 @@
 -- Add up migration script here
+-- Add up migration script here
 
 -- Setup UP migration
 -- Reapears database definition
@@ -75,7 +76,7 @@ CREATE TABLE IF NOT EXISTS accounts.phones(
 -- the user account will be deleted after 30 days the request issued.
 CREATE TABLE IF NOT EXISTS accounts.account_delete_requests(
     user_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
-    delete_request_at timestamptz NOT NULL,
+    requested_at timestamptz NOT NULL,
     PRIMARY KEY(user_id)
 );
 

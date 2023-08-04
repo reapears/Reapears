@@ -105,7 +105,7 @@ async fn run_migration(db: DatabaseConnection) {
 // RUN MIGRATIONS
 #[cfg(feature = "dev")]
 async fn run_migration(db: DatabaseConnection) {
-    sqlx::migrate!("tests/data/migrations")
+    sqlx::migrate!("tests/migrations")
         .run(&db.pool)
         .await
         .unwrap();

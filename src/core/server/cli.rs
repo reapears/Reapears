@@ -7,10 +7,6 @@ use clap::{Parser, Subcommand};
 pub struct ConfigCli {
     #[command(subcommand)]
     pub command: Option<Commands>,
-
-    // /// if true, create an api key
-    // /// and prints it on the console.
-    // pub api_key: bool,
 }
 
 /// Cli subcommands.

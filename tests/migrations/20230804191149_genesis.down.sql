@@ -1,4 +1,5 @@
 -- Add down migration script here
+-- Add down migration script here
 
 -- Setup Down Migrations
 

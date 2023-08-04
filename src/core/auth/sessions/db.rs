@@ -24,7 +24,7 @@ impl Session {
                     user_.account_locked_reason,
                     user_.account_locked_until,
                     address.verified AS email_verified,
-                    delete_request.delete_request_at AS "delete_request_at?"
+                    delete_request.requested_at AS "delete_requested_at?"
                 FROM accounts.emails address
                 LEFT JOIN accounts.users user_
                     ON address.user_id = user_.id
@@ -47,7 +47,7 @@ impl Session {
                         rec.account_locked_reason,
                         rec.account_locked_until,
                         rec.email_verified,
-                        rec.delete_request_at.is_some(),
+                        rec.delete_requested_at.is_some(),
                     )
                 });
                 Ok(user)
