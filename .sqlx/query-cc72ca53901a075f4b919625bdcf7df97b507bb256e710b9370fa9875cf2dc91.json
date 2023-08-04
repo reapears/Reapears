@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT  delete_request.user_id,\n                     delete_request.delete_request_at\n                FROM accounts.account_delete_requests delete_request\n            ",
+  "query": "\n                SELECT  delete_request.user_id,\n                     delete_request.requested_at\n                FROM accounts.account_delete_requests delete_request\n            ",
   "describe": {
     "columns": [
       {
@@ -10,7 +10,7 @@
       },
       {
         "ordinal": 1,
-        "name": "delete_request_at",
+        "name": "requested_at",
         "type_info": "Timestamptz"
       }
     ],
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "f391a46f5f78ff6486d831135bccccebc5c0f3e54db8afa9f8a5ed1d25f9ad4e"
+  "hash": "cc72ca53901a075f4b919625bdcf7df97b507bb256e710b9370fa9875cf2dc91"
 }

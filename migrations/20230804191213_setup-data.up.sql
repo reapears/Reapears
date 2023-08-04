@@ -1,9 +1,6 @@
 -- Add up migration script here
 
--- Add up migration script here
-
 -- services.cultivar_categories
-
 
 INSERT INTO services.cultivar_categories(id, name)
     VALUES('0189c073-51d3-7215-85f2-91579af8024b', 'Vegetable'),
