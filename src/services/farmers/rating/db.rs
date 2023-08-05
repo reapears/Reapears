@@ -54,7 +54,7 @@ impl FarmRating {
                     .map(|rec| {
                         Self::from_row(
                             rec.farm_rating_id.into(),
-                            rec.farm_rating_grade,
+                            rec.farm_rating_grade.unwrap_or_default(),
                             rec.farm_rating_comment,
                             rec.farm_rating_updated_at
                                 .unwrap_or(rec.farm_rating_created_at),
@@ -111,7 +111,7 @@ impl FarmRating {
             Ok(rec) => {
                 let farm_rating = Self::from_row(
                     rec.farm_rating_id.into(),
-                    rec.farm_rating_grade,
+                    rec.farm_rating_grade.unwrap_or_default(),
                     rec.farm_rating_comment,
                     rec.farm_rating_updated_at
                         .unwrap_or(rec.farm_rating_created_at),
@@ -289,7 +289,7 @@ impl FarmRating {
                     .map(|rec| {
                         Self::from_row(
                             rec.farm_rating_id.into(),
-                            rec.farm_rating_grade,
+                            rec.farm_rating_grade.unwrap_or_default(),
                             rec.farm_rating_comment,
                             rec.farm_rating_updated_at
                                 .unwrap_or(rec.farm_rating_created_at),
