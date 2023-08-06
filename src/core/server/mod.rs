@@ -133,7 +133,7 @@ pub fn tracing_init() {
     let format = tracing_subscriber::fmt::layer()
         .with_file(false)
         .with_target(false)
-        .json();
+        .compact();
 
     tracing_subscriber::registry()
         // add the console layer to the subscriber
@@ -152,10 +152,7 @@ pub fn tracing_init() {
     let filters = EnvFilter::try_from_default_env().unwrap_or_else(|_| default_filters.into());
 
     // tracing_subscriber::fmt
-    let format = tracing_subscriber::fmt::layer()
-        .with_file(false)
-        .with_target(false)
-        .json();
+    let format = tracing_subscriber::fmt::layer().json();
 
     tracing_subscriber::registry()
         .with(filters)

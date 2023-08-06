@@ -1,4 +1,5 @@
 -- Add up migration script here
+-- Add up migration script here
 
 -- services.harvest
 INSERT INTO services.harvests(id, cultivar_id, location_id, price, type, description, available_at, finished,

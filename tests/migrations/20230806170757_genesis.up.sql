@@ -192,9 +192,10 @@ CREATE TABLE IF NOT EXISTS services.farm_ratings(
     id uuid PRIMARY KEY,
     author_id uuid REFERENCES accounts.users (id) ON DELETE CASCADE,
     farm_id uuid REFERENCES services.farms (id) ON DELETE CASCADE,
-    grade integer NOT NULL CHECK (grade > 0 AND grade <= 5), -- grade must be either 1, 2, 3, 4, or 5.
+    grade integer CHECK (grade > 0 AND grade <= 5), -- grade must be either 1, 2, 3, 4, or 5.
     comment text,
-    reply_to uuid,
+    -- used for when the rating is a reply.
+    reply_to uuid REFERENCES services.farm_ratings (id),
     updated_at timestamptz,
     created_at timestamptz NOT NULL
 );
