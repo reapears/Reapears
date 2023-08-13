@@ -34,15 +34,20 @@ pub const MAX_DAYS_TO_DELETE_ACCOUNT: u8 = 90;
 // ===== AUTH =====
 
 /// Endpoints that are not protected with an API key;
-pub const UNAUTHENTICATED_ENDPOINTS: [&str; 6] = [
+pub const UNAUTHENTICATED_ENDPOINTS: [&str; 9] = [
     // Wep app endpoints
     "/",
     "/favicon.ico",
     "/assets",
     // Api endpoints
+    // "/account/signup" ??
     "/account/confirm",
     "/health-check",
     "/account/reset-password",
+    // Media endpoints
+    "/harvests/p",
+    "/cultivars/p",
+    "/account/users/photo"
 ];
 /// An error message for when a user entered a wrong password of username
 pub const INVALID_CREDENTIALS_ERR_MSG: &str = "The username or password you provided is incorrect.";
