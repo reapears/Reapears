@@ -208,13 +208,13 @@ CREATE TABLE IF NOT EXISTS services.harvests(
     price jsonb NOT NULL,
     type text,
     description text,
-    available_at date NOT NULL,
+    harvest_date date NOT NULL,
     images text[],
     updated_at timestamptz,
     finished boolean NOT NULL,
     finished_at date,
     created_at timestamptz NOT NULL,
-    UNIQUE(cultivar_id, location_id, available_at)
+    UNIQUE(cultivar_id, location_id, harvest_date, type)
 );
 
 

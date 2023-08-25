@@ -1,41 +1,54 @@
 import { React, useState } from "react";
 
-export function EmailChangeConfirm() {
-  const [info, setInfo] = useState({
+import {
+  Field,
+  Input,
+  shorthands,
+  makeStyles,
+  Button,
+} from "@fluentui/react-components";
+
+const useStyles = makeStyles({
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap("20px"),
+    maxWidth: "400px",
+  },
+});
+
+export function EmailChangeConfirm(props) {
+  const styles = useStyles();
+  const [user, setUser] = useState({
     code: "",
   });
 
   const onChange = (event) => {
     const key = event.target.name;
     const value = event.target.value;
-    setInfo((oldInfo) => ({ ...oldInfo, [key]: value }));
+    setUser((oldUser) => ({ ...oldUser, [key]: value }));
   };
 
   const submitForm = (event) => {
-    approveEmailChange(info);
+    approveEmailChange(user);
     event.preventDefault();
   };
 
   return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <div>
-        <label htmlFor="confirm-code">Email confirm code:</label>
-        <input
-          value={info.code}
-          id="confirm-code"
-          name="code"
-          onChange={onChange}
-          type="text"
-          required
-        />
-      </div>
+    <form className={styles.root} onSubmit={submitForm}>
+      <Field label="Email confirmation code" {...props}>
+        <Input name="code" value={user.code} onChange={onChange} />
+      </Field>
 
-      <button onClick={submitForm}>confirm email change</button>
-      <pre>{JSON.stringify(info, true, 2)}</pre>
+      <Button appearance="primary" {...props}>
+        Confirm email
+      </Button>
+
+      <pre>{JSON.stringify(user, true, 2)}</pre>
     </form>
   );
 }
 
-function approveEmailChange(info) {
-  console.log(JSON.stringify(info));
+function approveEmailChange(user) {
+  console.log(JSON.stringify(user));
 }

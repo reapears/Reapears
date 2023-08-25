@@ -1,6 +1,24 @@
 import { React, useState } from "react";
+import {
+  Field,
+  Input,
+  shorthands,
+  makeStyles,
+  Button,
+} from "@fluentui/react-components";
+import { DatePicker } from "@fluentui/react-datepicker-compat";
 
-export function FarmUpdate() {
+const useStyles = makeStyles({
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap("20px"),
+    maxWidth: "400px",
+  },
+});
+
+export function FarmUpdate(props) {
+  const styles = useStyles();
   const [farm, setFarm] = useState({
     name: "",
     contactNumber: "",
@@ -16,58 +34,52 @@ export function FarmUpdate() {
     });
   };
 
+  const onFoundDateChange = (value) => {
+    setFarm((oldFarm) => ({ ...oldFarm, ["foundedAt"]: value }));
+  };
+
   const submitForm = (event) => {
     updateFarm(farm);
     event.preventDefault();
   };
 
   return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <div>
-        <label htmlFor="farm-name">Farm name:</label>
-        <input
-          id="farm-name"
-          value={farm.name}
-          name="name"
-          onChange={onChange}
-          type="text"
-          required
-        />
-      </div>
+    <form className={styles.root} onSubmit={submitForm}>
+      <Field label="Farm name" required {...props}>
+        <Input name="name" value={farm.name} onChange={onChange} />
+      </Field>
 
-      <div>
-        <label htmlFor="contact-number">Contact number:</label>
-        <input
-          id="contact-number"
-          value={farm.contactNumber}
+      <Field label="Contact number" {...props}>
+        <Input
           name="contactNumber"
+          value={farm.contactNumber}
           onChange={onChange}
           type="phone"
         />
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="contact-number">Contact email:</label>
-        <input
-          id="contact-email"
-          value={farm.contactEmail}
+      <Field label="Contact email" {...props}>
+        <Input
           name="contactEmail"
+          value={farm.contactEmail}
           onChange={onChange}
           type="email"
         />
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="foundedAt">Founded at:</label>
-        <input
+      <Field label="Date founded">
+        <DatePicker
           value={farm.foundedAt}
-          name="foundedAt"
-          onChange={onChange}
-          type="date"
+          onSelectDate={onFoundDateChange}
+          placeholder="Select a date..."
+          {...props}
         />
-      </div>
+      </Field>
 
-      <button onClick={submitForm}>Save</button>
+      <Button appearance="primary" {...props}>
+        Save
+      </Button>
+
       <pre>{JSON.stringify(farm, true, 2)}</pre>
     </form>
   );

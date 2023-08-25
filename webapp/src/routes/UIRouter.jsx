@@ -38,21 +38,18 @@ export function UIRouter() {
         <Route path="/" element={<Produce />} />
         <Route path="/produce" element={<Produce />} />
         <Route path="/list-a-produce" element={<HarvestCreate />} />
-        <Route path="/produce/:harvest_id" element={<Harvest />} />
-        <Route path="/produce/:harvest_id/edit" element={<HarvestUpdate />} />
+        <Route path="/produce/:harvestId" element={<Harvest />} />
+        <Route path="/produce/:harvestId/edit" element={<HarvestUpdate />} />
 
         {/* Farmer routes */}
         <Route path="/become-a-farmer" element={<FarmCreate />} />
-        <Route path="/farm/:farm_id" element={<Farm />} />
-        <Route path="/farm/:farm_id/edit" element={<FarmUpdate />} />
-        <Route path="/farm/:farm_id/logo" element={<FarmLogoUpload />} />
+        <Route path="/farm/:farmId" element={<Farm />} />
+        <Route path="/farm/:farmId/edit" element={<FarmUpdate />} />
+        <Route path="/farm/:farmId/logo" element={<FarmLogoUpload />} />
+        <Route path="/farm/:farmId/add-location" element={<LocationCreate />} />
+        <Route path="/farm/location/:locationId" element={<Location />} />
         <Route
-          path="/farm/:farm_id/add-location"
-          element={<LocationCreate />}
-        />
-        <Route path="/farm/location/:location_id" element={<Location />} />
-        <Route
-          path="/farm/location/:location_id/edit"
+          path="/farm/location/:locationId/edit"
           element={<LocationUpdate />}
         />
 
@@ -89,9 +86,9 @@ export function UIRouter() {
           path="/user/profile/upload-photo"
           element={<UserProfilePhoto />}
         />
-        <Route path="/user/:user_id/profile" element={<UserProfile />} />
+        <Route path="/user/:userId/profile" element={<UserProfile />} />
         <Route
-          path="/user/:user_id/profile/edit"
+          path="/user/:userId/profile/edit"
           element={<UserProfileUpdate />}
         />
 

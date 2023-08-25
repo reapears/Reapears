@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO services.harvests(\n                    id,\n                    cultivar_id,\n                    location_id, \n                    price, \n                    type, \n                    description,\n                    harvest_date, \n                    created_at,\n                    finished\n                )\n                VALUES($1, $2, $3, $4, $5, $6, $7, $8, false);\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Date",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2896ac8c6c3e28daf99b36c40264db1b398b85ff3a83f867e5e78e56c838b811"
+}

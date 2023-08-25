@@ -26,7 +26,7 @@ pub async fn find_delete_harvest(
     match sqlx::query!(
         r#"
             SELECT harvest.id,
-                harvest.available_at,
+                harvest.harvest_date,
                 harvest.created_at,
                 harvest.images
             FROM services.harvests harvest
@@ -39,7 +39,7 @@ pub async fn find_delete_harvest(
     {
         Ok(rec) => Ok(DeleteHarvest {
             id: rec.id.into(),
-            available_at: rec.available_at,
+            harvest_date: rec.harvest_date,
             created_at: rec.created_at,
             images: rec.images,
         }),
@@ -57,7 +57,7 @@ pub async fn find_delete_harvest(
 #[derive(Debug, Clone)]
 pub struct DeleteHarvest {
     pub id: ModelID,
-    pub available_at: Date,
+    pub harvest_date: Date,
     pub created_at: OffsetDateTime,
     pub images: Option<Vec<String>>,
 }
@@ -136,7 +136,7 @@ pub async fn delete_or_archive_harvest(
     db: DatabaseConnection,
 ) -> ServerResult<()> {
     let finished_at = OffsetDateTime::now_utc();
-    if can_delete_harvest(harvest.available_at, harvest.created_at, finished_at)? {
+    if can_delete_harvest(harvest.harvest_date, harvest.created_at, finished_at)? {
         delete_harvest(harvest.id, db).await
     } else {
         archive_harvest(harvest.id, db).await
@@ -150,11 +150,11 @@ pub async fn delete_or_archive_harvest(
 ///
 /// Return an error if failed to calculate harvest max age
 fn can_delete_harvest(
-    available_at: Date,
+    harvest_date: Date,
     created_at: OffsetDateTime,
     finished_at: OffsetDateTime,
 ) -> ServerResult<bool> {
-    Ok(available_at > finished_at.date() || created_at > harvest_max_age(finished_at)?)
+    Ok(harvest_date > finished_at.date() || created_at > harvest_max_age(finished_at)?)
 }
 
 /// Calculate the harvest max age to archive

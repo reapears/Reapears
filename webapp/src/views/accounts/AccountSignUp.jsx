@@ -1,6 +1,25 @@
 import { React, useState } from "react";
 
-export function AccountSignUp() {
+import {
+  Field,
+  Input,
+  Button,
+  makeStyles,
+  shorthands,
+  Link,
+} from "@fluentui/react-components";
+
+const useStyles = makeStyles({
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap("20px"),
+    maxWidth: "400px",
+  },
+});
+
+export function AccountSignUp(props) {
+  const styles = useStyles();
   const [user, setUser] = useState({
     firstName: "",
     lastName: "",
@@ -19,52 +38,46 @@ export function AccountSignUp() {
     event.preventDefault();
   };
   return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <div>
-        <label htmlFor="firstName">First name:</label>
-        <input
-          value={user.firstName}
-          name="firstName"
-          onChange={onChange}
-          type="text"
-          required
-        />
-      </div>
+    <form className={styles.root} onSubmit={submitForm}>
+      <Field label="First name" required {...props}>
+        <Input name="firstName" value={user.firstName} onChange={onChange} />
+      </Field>
 
-      <div>
-        <label htmlFor="lastName">Last name:</label>
-        <input
-          value={user.lastName}
-          name="lastName"
-          onChange={onChange}
-          type="text"
-        />
-      </div>
+      <Field label="Last name" {...props}>
+        <Input name="lastName" value={user.lastName} onChange={onChange} />
+      </Field>
 
-      <div>
-        <label htmlFor="email">Email:</label>
-        <input
-          value={user.email}
+      <Field label="Email" {...props}>
+        <Input
           name="email"
+          value={user.email}
           onChange={onChange}
           type="email"
-          required
         />
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="password">Password:</label>
-        <input
-          value={user.password}
-          id="password"
+      <Field label="Password" required {...props}>
+        <Input
           name="password"
+          value={user.password}
           onChange={onChange}
           type="password"
-          required
         />
+      </Field>
+
+      <Button appearance="primary" {...props}>
+        Sign Up
+      </Button>
+
+      <div style={{ display: "flex", gap: "20px" }}>
+        <Link href="https://www.bing.com" {...props}>
+          Login
+        </Link>
+        <Link href="https://www.bing.com" {...props}>
+          Forgot password?
+        </Link>
       </div>
 
-      <button onClick={submitForm}>Sign Up</button>
       <pre>{JSON.stringify(user, true, 2)}</pre>
     </form>
   );

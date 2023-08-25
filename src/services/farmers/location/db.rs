@@ -97,9 +97,10 @@ impl Location {
                     country.name AS location_country,
                     farm.id AS farm_id,
                     farm.name AS farm_name,
+                    farm.logo AS farm_logo,
                     harvest.id AS "harvest_id?",
                     harvest.price AS "harvest_price?",
-                    harvest.available_at AS "harvest_available_at?",
+                    harvest.harvest_date AS "harvest_harvest_date?",
                     harvest.images AS harvest_images,
                     cultivar.name AS "cultivar_name?",
                     cultivar.image AS cultivar_image
@@ -147,7 +148,7 @@ impl Location {
                         HarvestIndex::from_row(
                             rec.harvest_id.unwrap().into(),
                             rec.harvest_price.unwrap(),
-                            rec.harvest_available_at.unwrap(),
+                            rec.harvest_harvest_date.unwrap(),
                             rec.harvest_images,
                             rec.cultivar_name.unwrap(),
                             rec.cultivar_image,
@@ -156,6 +157,7 @@ impl Location {
                             rec.location_country,
                             rec.location_coords,
                             rec.farm_name,
+                            rec.farm_logo,
                             0.into(), // boost amount not important
                         )
                     })

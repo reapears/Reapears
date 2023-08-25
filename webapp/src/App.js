@@ -2,13 +2,14 @@ import { Provider } from "react-redux";
 
 import { QueryClient, QueryClientProvider } from "react-query";
 
-import { FluentProvider, webLightTheme } from "@fluentui/react-components";
+import { FluentProvider } from "@fluentui/react-components";
 
 import { store } from "./store";
 import { Header, Footer } from "./components";
 import { UIRouter } from "./routes/UIRouter";
-import "./App.css";
 import { lightBrownTheme } from "./ui/theme";
+
+import "./App.css";
 
 const queryClient = new QueryClient();
 

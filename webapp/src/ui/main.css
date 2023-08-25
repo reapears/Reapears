@@ -22,6 +22,11 @@ body {
   overflow-x: hidden;
 }
 
+main {
+  max-width: 1024px;
+  margin: auto;
+}
+
 strong {
   font-weight: 500;
 }

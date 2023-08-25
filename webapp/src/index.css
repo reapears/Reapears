@@ -15,12 +15,19 @@ html {
 }
 
 body {
-  /* font-family: "Rubik", sans-serif; */
+  font-family: "Rubik", sans-serif;
   line-height: 1;
   font-weight: 400;
-  color: #1d1d1d;
   overflow-x: hidden;
+
+  max-width: 1024px;
+  margin: auto;
 }
+
+/* main {
+  max-width: 1024px;
+  margin: auto;
+} */
 
 strong {
   font-weight: 500;

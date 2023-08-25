@@ -1,41 +1,60 @@
 import { React, useState } from "react";
 
-export function PasswordForgot() {
-  const [info, setInfo] = useState({
+import {
+  Field,
+  Input,
+  shorthands,
+  makeStyles,
+  Button,
+} from "@fluentui/react-components";
+
+const useStyles = makeStyles({
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap("20px"),
+    maxWidth: "400px",
+  },
+});
+
+export function PasswordForgot(props) {
+  const styles = useStyles();
+
+  const [user, setUser] = useState({
     email: "",
   });
 
   const onChange = (event) => {
     const key = event.target.name;
     const value = event.target.value;
-    setInfo((oldInfo) => ({ ...oldInfo, [key]: value }));
+    setUser((oldUser) => ({ ...oldUser, [key]: value }));
   };
 
   const submitForm = (event) => {
-    forgotPassword(info);
+    forgotPassword(user);
     event.preventDefault();
   };
 
   return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <div>
-        <label htmlFor="account-email">Your email address:</label>
-        <input
-          value={info.email}
-          id="account-email"
+    <form className={styles.root} onSubmit={submitForm}>
+      <Field label="Your email address" {...props}>
+        <Input
           name="email"
+          value={user.email}
           onChange={onChange}
           type="email"
-          required
         />
-      </div>
+      </Field>
 
-      <button onClick={submitForm}>forgot password</button>
-      <pre>{JSON.stringify(info, true, 2)}</pre>
+      <Button appearance="primary" {...props}>
+        Forgot password
+      </Button>
+
+      <pre>{JSON.stringify(user, true, 2)}</pre>
     </form>
   );
 }
 
-function forgotPassword(info) {
-  console.log(JSON.stringify(info));
+function forgotPassword(user) {
+  console.log(JSON.stringify(user));
 }

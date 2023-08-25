@@ -2,11 +2,11 @@
 
 // ===== Paths ======
 
-/// Web app build directory
-pub const WEB_APP_BUILD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/webapp/build");
+/// Web app index html file
+pub const WEB_APP_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/webapp/build/index.html");
 
 /// Web app build directory
-pub const WEB_APP_ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/webapp/assets");
+pub const WEB_APP_BUILD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/webapp/build");
 
 /// Server home directory
 pub const HOME_DIR: &str = env!("CARGO_MANIFEST_DIR");

@@ -336,7 +336,7 @@ pub async fn delete_farm_harvests(
                 WHERE location_.farm_id = $1
             )
             AND (
-                harvest.available_at > $2 OR
+                harvest.harvest_date > $2 OR
                 harvest.created_at > $3
             )
         "#,
@@ -385,7 +385,7 @@ pub async fn archive_farm_harvests(
                 WHERE location_.farm_id = $2
             )
             AND NOT(
-                harvest.available_at > $1 OR
+                harvest.harvest_date > $1 OR
                 harvest.created_at > $3
             )
         "#,

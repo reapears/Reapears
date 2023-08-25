@@ -1,6 +1,27 @@
 import { React, useState } from "react";
 
-export function PersonalInfoUpdate() {
+import {
+  Field,
+  Input,
+  shorthands,
+  makeStyles,
+  Button,
+  Select,
+} from "@fluentui/react-components";
+
+import { DatePicker } from "@fluentui/react-datepicker-compat";
+
+const useStyles = makeStyles({
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap("20px"),
+    maxWidth: "400px",
+  },
+});
+
+export function PersonalInfoUpdate(props) {
+  const styles = useStyles();
   const [user, setUser] = useState({
     firstName: "",
     lastName: "",
@@ -14,59 +35,50 @@ export function PersonalInfoUpdate() {
     setUser((oldUser) => ({ ...oldUser, [key]: value }));
   };
 
+  const onDateChange = (value) => {
+    setUser((oldUser) => ({ ...oldUser, ["dateOfBirth"]: value }));
+  };
+
   const submitForm = (event) => {
     updatePersonalInfo(user);
     event.preventDefault();
   };
 
   return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <div>
-        <label htmlFor="firstName">First name:</label>
-        <input
-          value={user.firstName}
-          name="firstName"
-          onChange={onChange}
-          type="text"
-          required
-        />
-      </div>
+    <form className={styles.root} onSubmit={submitForm}>
+      <Field label="First name" required {...props}>
+        <Input name="firstName" value={user.firstName} onChange={onChange} />
+      </Field>
 
-      <div>
-        <label htmlFor="lastName">Last name:</label>
-        <input
-          value={user.lastName}
-          name="lastName"
-          onChange={onChange}
-          type="text"
-        />
-      </div>
+      <Field label="Last name" {...props}>
+        <Input name="lastName" value={user.lastName} onChange={onChange} />
+      </Field>
 
-      <div>
-        <label htmlFor="gender">Gender:</label>
-        <select
+      <Field label="Gender" {...props}>
+        <Select
           value={user.gender}
           name="gender"
           onChange={onChange}
-          id="gender"
+          {...props}
         >
-          <option value="">Not specified</option>
           <option value="male">Male</option>
           <option value="female">Female</option>
-        </select>
-      </div>
+          <option value="">Not specified</option>
+        </Select>
+      </Field>
 
-      <div>
-        <label htmlFor="dateOfBirth">Date of birth:</label>
-        <input
+      <Field label="Date of birth">
+        <DatePicker
           value={user.dateOfBirth}
-          name="dateOfBirth"
-          onChange={onChange}
-          type="date"
+          onSelectDate={onDateChange}
+          placeholder="Select a date..."
+          {...props}
         />
-      </div>
+      </Field>
 
-      <button onClick={submitForm}>Save changes</button>
+      <Button appearance="primary" {...props}>
+        Save
+      </Button>
       <pre>{JSON.stringify(user, true, 2)}</pre>
     </form>
   );

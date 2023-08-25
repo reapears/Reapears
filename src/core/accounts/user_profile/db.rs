@@ -47,7 +47,7 @@ impl UserProfile {
                 harvest.id AS "harvest_id?",
                 harvest.price AS "harvest_price?",
                 harvest.images AS harvest_images,
-                harvest.available_at AS "harvest_available_at?",
+                harvest.harvest_date AS "harvest_harvest_date?",
                 cultivar.name AS "cultivar_name?",
                 cultivar.image AS cultivar_image
             FROM accounts.users user_
@@ -127,7 +127,7 @@ impl UserProfile {
                                     HarvestIndex::from_row(
                                         rec.harvest_id.unwrap().into(),
                                         rec.harvest_price.unwrap(),
-                                        rec.harvest_available_at.unwrap(),
+                                        rec.harvest_harvest_date.unwrap(),
                                         rec.harvest_images,
                                         rec.cultivar_name.unwrap(),
                                         rec.cultivar_image,
@@ -136,6 +136,7 @@ impl UserProfile {
                                         rec.location_country.unwrap(),
                                         rec.location_coords,
                                         rec.farm_name.unwrap(),
+                                        rec.farm_logo,
                                         0.into(), // boost amount not important
                                     )
                                 })

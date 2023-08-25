@@ -9,7 +9,7 @@ edition = "2021"
 dev = ["console-subscriber", "color-eyre"]
 
 [dependencies]
-tokio = { version = "1.29.1", features = [
+tokio = { version = "1.32.0", features = [
     "rt-multi-thread",
     "fs",
     "time",
@@ -74,8 +74,8 @@ lettre = { version = "0.10.4", default-features = false, features = [
     "hostname",
     "tokio1-rustls-tls",
 ] }
-minijinja = "1.0.5"
-image = { version = "0.24.6", features = ["webp-encoder"] }
+minijinja = "1.0.6"
+image = { version = "0.24.7", features = ["webp-encoder"] }
 
 # 
 password-auth = "0.3.0"
@@ -86,9 +86,9 @@ rand = "0.8.5"
 itertools = "0.11.0"
 geo = { version = "0.26.0", features = ["use-serde"] }
 uuid = { version = "1.4.1", features = ["v7", "fast-rng", "serde"] }
-time = { version = "0.3.25", features = ["serde-human-readable"] }
+time = { version = "0.3.27", features = ["serde-human-readable"] }
 phonenumber = "0.3.2"
-rust_decimal = "1.31.0"
+rust_decimal = "1.32.0"
 
 # 
 tracing = "0.1.37"

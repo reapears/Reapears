@@ -1,5 +1,46 @@
 import { configureStore, createSlice } from "@reduxjs/toolkit";
 
+const defaultUser = {
+  loggedIn: false,
+  profile: null,
+  personalInfo: null,
+  farms: null,
+};
+
+// getUserFarms, getUserLocations, getUserHarvests
+
+const defaultUsher = {
+  loggedIn: false,
+  profile: {
+    about: null,
+    livesAt: null,
+  },
+  personalInfo: {
+    firstName: null,
+    lastName: null,
+    gender: null,
+    email: null,
+  },
+  farms: {
+    farm: {
+      name: null,
+      contactEmail: null,
+      contactNumber: null,
+      logo: null,
+      foundedAt: null,
+      locations: [],
+    },
+
+    location: {
+      placeName: null,
+      region: null,
+      country: null,
+      coords: null,
+      harvests: {},
+    },
+  },
+};
+
 const demoSlice = createSlice({
   name: "Demo",
   initialState: {

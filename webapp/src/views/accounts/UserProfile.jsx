@@ -1,5 +1,11 @@
 import React from "react";
+import { UserProfilePhoto } from "./UserProfilePhoto";
 
 export function UserProfile() {
-  return <div>UserProfile</div>;
+  return (
+    <div>
+      <UserProfilePhoto />
+      UserProfile
+    </div>
+  );
 }

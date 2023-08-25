@@ -1,6 +1,24 @@
 import { React, useState } from "react";
 
-export function PasswordReset() {
+import {
+  Field,
+  Input,
+  shorthands,
+  makeStyles,
+  Button,
+} from "@fluentui/react-components";
+
+const useStyles = makeStyles({
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap("20px"),
+    maxWidth: "400px",
+  },
+});
+
+export function PasswordReset(props) {
+  const styles = useStyles();
   const [password, setPassword] = useState({
     new: "",
     confirm: "",
@@ -18,35 +36,36 @@ export function PasswordReset() {
   };
 
   return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <div>
-        <label htmlFor="new">New password:</label>
-        <input
-          value={password.new}
+    <form className={styles.root} onSubmit={submitForm}>
+      <Field label="New password" {...props}>
+        <Input
           name="new"
+          value={password.new}
           onChange={onChange}
           type="password"
           required
         />
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="confirm">Confirm password:</label>
-        <input
-          value={password.confirm}
+      <Field label="Confirm password" {...props}>
+        <Input
           name="confirm"
+          value={password.confirm}
           onChange={onChange}
           type="password"
           required
         />
-      </div>
+      </Field>
 
-      <button onClick={submitForm}>Reset password</button>
+      <Button appearance="primary" {...props}>
+        Rest password
+      </Button>
+
       <pre>{JSON.stringify(password, true, 2)}</pre>
     </form>
   );
 }
 
-function resetPassword(info) {
-  console.log(JSON.stringify(info));
+function resetPassword(password) {
+  console.log(JSON.stringify(password));
 }

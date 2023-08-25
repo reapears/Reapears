@@ -2,7 +2,7 @@
 -- Add up migration script here
 
 -- services.harvest
-INSERT INTO services.harvests(id, cultivar_id, location_id, price, type, description, available_at, finished,
+INSERT INTO services.harvests(id, cultivar_id, location_id, price, type, description, harvest_date, finished,
                               images, updated_at, finished_at, created_at)   
      VALUES('fb98aa81-74ab-4708-94f1-4511bb0fafe5', '0189c073-51cd-766e-a3da-1a7462937354',  '5b793e9f-94f1-4f8c-96d5-8aef167c461c', '{"amount": 60, "unit": {"Kg": 10}}',
       'Avocadoes', null, '2022-09-06 10:02:25.533896846 +00:00:00', false, null, null, null, '2022-09-06 10:02:25.533896846 +00:00:00'),

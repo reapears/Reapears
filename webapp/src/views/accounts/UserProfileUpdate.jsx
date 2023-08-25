@@ -1,6 +1,25 @@
 import { React, useState } from "react";
 
-export function UserProfileUpdate() {
+import {
+  Field,
+  Input,
+  shorthands,
+  makeStyles,
+  Button,
+  Textarea,
+} from "@fluentui/react-components";
+
+const useStyles = makeStyles({
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap("20px"),
+    maxWidth: "400px",
+  },
+});
+
+export function UserProfileUpdate(props) {
+  const styles = useStyles();
   const [user, setUser] = useState({
     about: "",
     livesAt: "",
@@ -17,29 +36,23 @@ export function UserProfileUpdate() {
     event.preventDefault();
   };
   return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <div>
-        <label htmlFor="about">About:</label>
-        <input
-          value={user.about}
+    <form className={styles.root} onSubmit={submitForm}>
+      <Field label="about" {...props}>
+        <Textarea
           name="about"
+          value={user.about}
           onChange={onChange}
-          type="text"
-          required
+          {...props}
         />
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="livesAt">Lives at:</label>
-        <input
-          value={user.livesAt}
-          name="livesAt"
-          onChange={onChange}
-          type="text"
-        />
-      </div>
+      <Field label="Lives at" {...props}>
+        <Input name="livesAt" value={user.livesAt} onChange={onChange} />
+      </Field>
 
-      <button onClick={submitForm}>Save changes</button>
+      <Button appearance="primary" {...props}>
+        Save
+      </Button>
       <pre>{JSON.stringify(user, true, 2)}</pre>
     </form>
   );

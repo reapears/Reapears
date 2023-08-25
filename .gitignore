@@ -1,2 +1,3 @@
 /target
+/static/media/uploads/cultivar/*
 .env

@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services.harvests harvest\n                SET cultivar_id = COALESCE($1, harvest.cultivar_id),\n                    location_id = COALESCE($2, harvest.location_id),\n                    price = COALESCE($3, harvest.price),\n                    type = $4,\n                    description = $5,\n                    harvest_date = COALESCE($6, harvest.harvest_date), \n                    updated_at = $7\n                WHERE harvest.id = $8;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Date",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1f368409749956cd1334dd04a6c968b786d8ece407b930b43dcd538fb32fc774"
+}

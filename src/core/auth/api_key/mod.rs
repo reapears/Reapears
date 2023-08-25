@@ -32,18 +32,24 @@ impl FromRequestParts<ServerState> for ApiAuthentication {
         parts: &mut Parts,
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
-        if crate::UNAUTHENTICATED_ENDPOINTS.contains(&parts.uri.path()) {
-            return Ok(Self);
-        }
-        // Extract key from url query.
-        let Ok(Query(key)) = Query::<ApiKeyQuery>::from_request_parts(parts, state).await else{
-            tracing::debug!("Request rejected no api key found");
-            return Err(EndpointRejection::unauthorized());
-        };
-        // Verify api key.
-        if !ApiToken::exists(hash_token(key.api_key.as_bytes()), state.database.clone()).await? {
-            tracing::debug!("Request rejected invalid api key.");
-            return Err(EndpointRejection::unauthorized());
+        let path = &parts.uri.path();
+
+        if path.starts_with("/api/") {
+            if crate::UNAUTHENTICATED_ENDPOINTS.contains(path) {
+                return Ok(Self);
+            }
+
+            // Extract key from url query.
+            let Ok(Query(key)) = Query::<ApiKeyQuery>::from_request_parts(parts, state).await else{
+                tracing::debug!("Request rejected no api key found");
+                return Err(EndpointRejection::unauthorized());
+            };
+            // Verify api key.
+            if !ApiToken::exists(hash_token(key.api_key.as_bytes()), state.database.clone()).await?
+            {
+                tracing::debug!("Request rejected invalid api key.");
+                return Err(EndpointRejection::unauthorized());
+            }
         }
 
         Ok(Self)
