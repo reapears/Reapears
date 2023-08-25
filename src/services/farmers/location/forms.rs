@@ -111,17 +111,6 @@ pub struct LocationInsertData {
 }
 
 impl LocationCreateForm {
-    ///  Validate a user has the permissions to crate a location on this farm
-    async fn authorize_request(
-        user: FarmerUser,
-        farm_id: ModelID,
-        state: &ServerState,
-    ) -> EndpointResult<()> {
-        check_user_owns_farm(user.id(), farm_id, state.database.clone()).await
-    }
-}
-
-impl LocationCreateForm {
     /// Validates location form inputs
     fn validate(&mut self) -> EndpointResult<()> {
         // Clean the data
@@ -164,6 +153,15 @@ impl LocationCreateForm {
             coords: serde_json::to_value(self.coords).ok(),
             created_at: OffsetDateTime::now_utc().date(),
         }
+    }
+
+    ///  Validate a user has the permissions to crate a location on this farm
+    async fn authorize_request(
+        user: FarmerUser,
+        farm_id: ModelID,
+        state: &ServerState,
+    ) -> EndpointResult<()> {
+        check_user_owns_farm(user.id(), farm_id, state.database.clone()).await
     }
 }
 

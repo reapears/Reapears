@@ -1,0 +1,7 @@
+# https://www.robotstxt.org/robotstxt.html
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: *
+Disallow: 

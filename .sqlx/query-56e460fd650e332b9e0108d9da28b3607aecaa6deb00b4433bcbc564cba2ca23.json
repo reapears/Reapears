@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT user_.id AS user_id,\n                    user_.phc_string,\n                    user_.account_locked,\n                    user_.account_locked_reason,\n                    user_.account_locked_until,\n                    address.verified AS email_verified,\n                    delete_request.requested_at AS \"delete_requested_at?\"\n                FROM accounts.emails address\n                LEFT JOIN accounts.users user_\n                    ON address.user_id = user_.id\n                LEFT JOIN accounts.account_delete_requests delete_request\n                    ON address.user_id = delete_request.user_id\n\n                WHERE LOWER(address.email) = LOWER( $1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "phc_string",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "account_locked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "account_locked_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "account_locked_until",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "email_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "delete_requested_at?",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "56e460fd650e332b9e0108d9da28b3607aecaa6deb00b4433bcbc564cba2ca23"
+}

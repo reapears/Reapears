@@ -11,9 +11,7 @@ use crate::core::{
 /// A `Vec` of farm ratings
 pub type FarmRatingList = Vec<FarmRating>;
 
-/// The model representing a row in the `locations` database table.
-///
-/// Returned by `farm_rating_detail/list` handler.
+/// The model representing a row in the `farm_ratings` database table.
 #[derive(Debug, Clone, Serialize)]
 pub struct FarmRating {
     pub id: ModelID,
@@ -25,6 +23,26 @@ pub struct FarmRating {
     /// if is not set is the rating creation date
     pub update_at: OffsetDateTime,
 }
+
+// // `FarmRating` reply
+// #[derive(Debug, Clone, Serialize)]
+// pub struct RatingReply {
+//     pub id: ModelID,
+//     pub comment: String,
+//     pub author: UserIndex,
+//     pub reply_to: ModelID,
+//     pub created_at: OffsetDateTime,
+// }
+// WITH RECURSIVE ctename AS (
+//     SELECT empno, ename
+//     FROM emp
+//     WHERE empno = 7566
+//  UNION ALL
+//     SELECT emp.empno, emp.ename
+//     FROM emp
+//        JOIN ctename ON emp.mgr = ctename.empno
+// )
+// SELECT * FROM ctename;
 
 impl FarmRating {
     /// Creates a new `FarmRating` from the database row

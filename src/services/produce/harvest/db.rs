@@ -29,11 +29,12 @@ impl Harvest {
                 SELECT harvest.id AS "harvest_id!",
                     harvest.cultivar_id,
                     harvest.price AS "harvest_price!",
-                    harvest.available_at AS "harvest_available_at!",
+                    harvest.harvest_date AS "harvest_harvest_date!",
                     harvest.images AS harvest_images,
                     cultivar.name AS cultivar_name,
                     cultivar.image AS cultivar_image, 
                     farm.name AS farm_name,
+                    farm.logo AS farm_logo,
                     location_.place_name AS location_place_name,
                     location_.coords AS location_coords,
                     region.name AS "location_region?",
@@ -56,7 +57,7 @@ impl Harvest {
                     ON harvest.id  = subscription.harvest_id
 
                 ORDER BY subscription.amount DESC NULLS LAST,
-                    greatest(AGE(harvest.available_at), -AGE(harvest.available_at));
+                    greatest(AGE(harvest.harvest_date), -AGE(harvest.harvest_date));
             "#,
         )
         .fetch(&db.pool)
@@ -64,7 +65,7 @@ impl Harvest {
             HarvestIndex::from_row(
                 rec.harvest_id.into(),
                 rec.harvest_price,
-                rec.harvest_available_at,
+                rec.harvest_harvest_date,
                 rec.harvest_images,
                 rec.cultivar_name,
                 rec.cultivar_image,
@@ -73,6 +74,7 @@ impl Harvest {
                 rec.location_country,
                 rec.location_coords,
                 rec.farm_name,
+                rec.farm_logo,
                 calc_boost_amount(rec.boost_amount, rec.subscription_expires_at, today),
             )
         })
@@ -88,11 +90,12 @@ impl Harvest {
                 SELECT harvest.id AS "harvest_id!",
                     harvest.cultivar_id,
                     harvest.price AS "harvest_price!",
-                    harvest.available_at AS "harvest_available_at!",
+                    harvest.harvest_date AS "harvest_harvest_date!",
                     harvest.images AS harvest_images,
                     cultivar.name AS cultivar_name,
                     cultivar.image AS cultivar_image, 
                     farm.name AS farm_name,
+                    farm.logo AS farm_logo,
                     location_.place_name AS location_place_name,
                     location_.coords AS location_coords,
                     region.name AS "location_region?",
@@ -132,7 +135,7 @@ impl Harvest {
                         HarvestIndex::from_row(
                             rec.harvest_id.into(),
                             rec.harvest_price,
-                            rec.harvest_available_at,
+                            rec.harvest_harvest_date,
                             rec.harvest_images,
                             rec.cultivar_name,
                             rec.cultivar_image,
@@ -141,6 +144,7 @@ impl Harvest {
                             rec.location_country,
                             rec.location_coords,
                             rec.farm_name,
+                            rec.farm_logo,
                             calc_boost_amount(rec.boost_amount, rec.subscription_expires_at, today),
                         )
                     })
@@ -165,7 +169,7 @@ impl Harvest {
                 SELECT harvest.id AS "harvest_id!", 
                     harvest.cultivar_id AS "cultivar_id!",
                     harvest.price AS "harvest_price!",
-                    harvest.available_at AS "harvest_available_at!",
+                    harvest.harvest_date AS "harvest_harvest_date!",
                     harvest.type AS harvest_type,
                     harvest.description AS harvest_description,
                     harvest.images AS harvest_images,
@@ -174,6 +178,9 @@ impl Harvest {
                     cultivar.image AS cultivar_image, 
                     farm.id AS farm_id,
                     farm.name AS farm_name,
+                    farm.logo AS farm_logo,
+                    farm.contact_number AS farm_contact_number,
+                    farm.contact_email AS farm_contact_email,
                     location_.id AS location_id,
                     location_.place_name AS location_place_name,
                     location_.coords AS location_coords,
@@ -213,7 +220,7 @@ impl Harvest {
                     rec.harvest_type,
                     rec.harvest_description,
                     rec.harvest_images,
-                    rec.harvest_available_at,
+                    rec.harvest_harvest_date,
                     rec.harvest_created_at,
                     rec.cultivar_id.into(),
                     rec.cultivar_name,
@@ -225,6 +232,9 @@ impl Harvest {
                     rec.location_coords,
                     rec.farm_id.into(),
                     rec.farm_name,
+                    rec.farm_logo,
+                    rec.farm_contact_number,
+                    rec.farm_contact_email,
                     rec.farm_owner_id.into(),
                     rec.farm_owner_first_name,
                     rec.farm_owner_last_name,
@@ -260,7 +270,7 @@ impl Harvest {
                     price, 
                     type, 
                     description,
-                    available_at, 
+                    harvest_date, 
                     created_at,
                     finished
                 )
@@ -272,7 +282,7 @@ impl Harvest {
             harvest.price,
             harvest.r#type,
             harvest.description,
-            harvest.available_at,
+            harvest.harvest_date,
             harvest.created_at
         )
         .execute(&db.pool)
@@ -307,7 +317,7 @@ impl Harvest {
                     price = COALESCE($3, harvest.price),
                     type = $4,
                     description = $5,
-                    available_at = COALESCE($6, harvest.available_at), 
+                    harvest_date = COALESCE($6, harvest.harvest_date), 
                     updated_at = $7
                 WHERE harvest.id = $8;
             "#,
@@ -316,7 +326,7 @@ impl Harvest {
             harvest.price,
             harvest.r#type,
             harvest.description,
-            harvest.available_at,
+            harvest.harvest_date,
             harvest.updated_at,
             id.0,
         )

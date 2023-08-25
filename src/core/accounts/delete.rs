@@ -44,7 +44,7 @@ impl AccountDelete {
         match sqlx::query!(
             r#"
                 SELECT  delete_request.user_id,
-                     delete_request.delete_request_at
+                     delete_request.requested_at
                 FROM accounts.account_delete_requests delete_request
             "#
         )
@@ -59,7 +59,7 @@ impl AccountDelete {
                     // Filter only account that can be deleted;
                     // such that the delete_request_at <= now_utc()
                     .filter(|rec| {
-                        let request_date = rec.delete_request_at
+                        let request_date = rec.requested_at
                             - Duration::days(i64::from(crate::MAX_DAYS_TO_DELETE_ACCOUNT));
                         request_date.date() <= now
                     })
@@ -85,7 +85,7 @@ impl AccountDelete {
             r#"
                 INSERT INTO accounts.account_delete_requests(
                     user_id, 
-                    delete_request_at
+                    requested_at
                 )
                  VALUES($1, $2);
               "#,

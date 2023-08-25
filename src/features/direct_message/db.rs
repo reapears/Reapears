@@ -250,6 +250,7 @@ impl Conversation {
 
     /// Updates the direct message is_read in the database
     #[tracing::instrument(name = "Update messages are read", skip(db))]
+    #[allow(clippy::cast_possible_wrap)]
     pub async fn update_is_read(
         receiver_id: ModelID,
         message_ids: Vec<ModelID>,

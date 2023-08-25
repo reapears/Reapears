@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO accounts.account_delete_requests(\n                    user_id, \n                    requested_at\n                )\n                 VALUES($1, $2);\n              ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d4d1f6d2ba1982bcf7777b9a870c6eb71143bce761d5c0b324abf638d385d41c"
+}

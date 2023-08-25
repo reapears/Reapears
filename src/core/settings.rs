@@ -2,11 +2,11 @@
 
 // ===== Paths ======
 
-/// Web app build directory
-pub const WEB_APP_BUILD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/UI/build");
+/// Web app index html file
+pub const WEB_APP_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/webapp/build/index.html");
 
 /// Web app build directory
-pub const WEB_APP_ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/UI/assets");
+pub const WEB_APP_BUILD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/webapp/build");
 
 /// Server home directory
 pub const HOME_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -33,9 +33,3 @@ pub const CULTIVAR_UPLOAD_DIR: &str =
 /// Harvests image file uploads directory
 pub const HARVEST_UPLOAD_DIR: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/static/media/uploads/harvest");
-
-/// File not found html response
-pub const FILE_NOT_FOUND_PATH: &str = concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/static/media/uploads/upload_not_found.html"
-);

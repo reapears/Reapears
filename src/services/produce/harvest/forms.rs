@@ -19,7 +19,7 @@ use crate::{
     types::{price::Price, ModelID},
 };
 
-use helpers::{validate_available_at, validate_price};
+use helpers::{validate_harvest_date, validate_price};
 
 use super::permissions::check_user_can_update_harvest;
 
@@ -32,7 +32,7 @@ pub struct HarvestCreateForm {
     pub price: Price,
     pub r#type: Option<String>,
     pub description: Option<String>,
-    pub available_at: Option<Date>,
+    pub harvest_date: Option<Date>,
 }
 
 /// Harvest create form cleaned data
@@ -44,7 +44,7 @@ pub struct HarvestInsertData {
     pub price: serde_json::Value,
     pub r#type: Option<String>,
     pub description: Option<String>,
-    pub available_at: Date,
+    pub harvest_date: Date,
     pub created_at: OffsetDateTime,
 }
 
@@ -52,7 +52,7 @@ pub struct HarvestInsertData {
 impl From<HarvestCreateForm> for HarvestInsertData {
     fn from(form: HarvestCreateForm) -> Self {
         let created_at = OffsetDateTime::now_utc();
-        let available_at = form.available_at.unwrap_or_else(|| created_at.date());
+        let harvest_date = form.harvest_date.unwrap_or_else(|| created_at.date());
         Self {
             id: ModelID::new(),
             location_id: ModelID::from_str_unchecked(&form.location_id),
@@ -60,7 +60,7 @@ impl From<HarvestCreateForm> for HarvestInsertData {
             price: serde_json::to_value(form.price).unwrap(),
             r#type: form.r#type,
             description: form.description,
-            available_at,
+            harvest_date,
             created_at,
         }
     }
@@ -84,8 +84,8 @@ impl HarvestCreateForm {
             desc.validate_len(0, 32, "Harvest description must be at most 512 characters")?;
         }
 
-        if let Some(available_at) = self.available_at {
-            validate_available_at(available_at)?;
+        if let Some(harvest_date) = self.harvest_date {
+            validate_harvest_date(harvest_date)?;
         }
 
         Ok(())
@@ -145,7 +145,7 @@ pub struct HarvestUpdateForm {
     pub price: Price,
     pub r#type: Option<String>,
     pub description: Option<String>,
-    pub available_at: Option<Date>,
+    pub harvest_date: Option<Date>,
 }
 
 /// Harvest update form cleaned data
@@ -156,7 +156,7 @@ pub struct HarvestUpdateData {
     pub price: serde_json::Value,
     pub r#type: Option<String>,
     pub description: Option<String>,
-    pub available_at: Option<Date>,
+    pub harvest_date: Option<Date>,
     pub updated_at: OffsetDateTime,
 }
 
@@ -169,7 +169,7 @@ impl From<HarvestUpdateForm> for HarvestUpdateData {
             price: serde_json::to_value(form.price).unwrap(),
             r#type: form.r#type,
             description: form.description,
-            available_at: form.available_at,
+            harvest_date: form.harvest_date,
             updated_at: OffsetDateTime::now_utc(),
         }
     }
@@ -193,8 +193,8 @@ impl HarvestUpdateForm {
             desc.validate_len(0, 32, "Harvest description must be at most 512 characters")?;
         }
 
-        if let Some(available_at) = self.available_at {
-            validate_available_at(available_at)?;
+        if let Some(harvest_date) = self.harvest_date {
+            validate_harvest_date(harvest_date)?;
         }
 
         Ok(())
@@ -255,11 +255,11 @@ mod helpers {
     };
     use time::{Date, OffsetDateTime};
 
-    /// Validate harvest `available_at` date is not a past date
-    pub fn validate_available_at(date: Date) -> EndpointResult<()> {
+    /// Validate harvest `harvest_date` date is not a past date
+    pub fn validate_harvest_date(date: Date) -> EndpointResult<()> {
         if date < OffsetDateTime::now_utc().date() {
             return Err(EndpointRejection::BadRequest(
-                "Available-at date cannot be a past date.".into(),
+                "Harvesting date cannot be a past date.".into(),
             ));
         }
         Ok(())

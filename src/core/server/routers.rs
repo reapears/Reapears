@@ -88,13 +88,15 @@ use axum::{
     routing::{get, get_service},
     Router,
 };
-use tower_http::{services::ServeDir, set_header::SetResponseHeader};
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    set_header::SetResponseHeader,
+};
 
 use crate::{
     endpoint::EndpointResult,
     settings::{
-        CULTIVAR_UPLOAD_DIR, HARVEST_UPLOAD_DIR, USER_UPLOAD_DIR, WEB_APP_ASSETS_DIR,
-        WEB_APP_BUILD_DIR,
+        CULTIVAR_UPLOAD_DIR, HARVEST_UPLOAD_DIR, USER_UPLOAD_DIR, WEB_APP_BUILD_DIR, WEB_APP_ROOT,
     },
 };
 
@@ -115,14 +117,10 @@ pub fn server_routers() -> Router<ServerState> {
         Path::new(WEB_APP_BUILD_DIR)
     );
 
-    let web_app = serve_dir(WEB_APP_BUILD_DIR, MAX_AGE_ONE_DAY);
-    let assets = serve_dir(WEB_APP_ASSETS_DIR, MAX_AGE_ONE_YEAR);
-
     Router::new()
-        .fallback_service(web_app)
-        .nest_service("/assets", assets)
-        .route("/health-check", get(health_check))
+        .fallback_service(web_app())
         .nest("/api/v1", api_v1_router())
+        .route("/health-check", get(health_check))
 }
 
 /// Api version one routers
@@ -137,6 +135,16 @@ fn api_v1_router() -> Router<ServerState> {
 #[allow(clippy::unused_async)]
 async fn health_check() -> EndpointResult<StatusCode> {
     Ok(StatusCode::OK)
+}
+
+/// Sets up `Webapp` frontend service
+fn web_app() -> MethodRouter {
+    let frontend = ServeDir::new(WEB_APP_BUILD_DIR)
+        .fallback(ServeFile::new(WEB_APP_ROOT))
+        .precompressed_gzip();
+    let with_caching =
+        SetResponseHeader::if_not_present(frontend, header::CACHE_CONTROL, MAX_AGE_ONE_YEAR);
+    get_service(with_caching)
 }
 
 /// Sets up `ServeDir` service
@@ -162,8 +170,3 @@ fn pictures_router() -> Router<ServerState> {
             get_service(serve_dir(USER_UPLOAD_DIR, MAX_AGE_ONE_DAY)),
         )
 }
-
-// /// File not found error response
-// fn file_not_found() -> ServeFile {
-//     ServeFile::new(FILE_NOT_FOUND_PATH)
-// }

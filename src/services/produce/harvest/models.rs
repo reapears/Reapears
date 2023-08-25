@@ -23,14 +23,14 @@ pub struct Harvest {
     pub id: ModelID,
     pub name: String,
     pub cultivar: ModelIdentifier,
-    pub farm: ModelIdentifier,
+    pub farm: HarvestFarm,
     pub farm_owner: UserIndex,
     pub price: Price,
     pub r#type: Option<String>,
     pub description: Option<String>,
     pub cultivar_image: Option<String>,
     pub images: Option<Vec<String>>,
-    pub available_at: Date,
+    pub harvest_date: Date,
     pub created_at: Date,
     pub location: HarvestLocation,
 }
@@ -45,7 +45,7 @@ impl Harvest {
         r#type: Option<String>,
         description: Option<String>,
         images: Option<Vec<String>>,
-        available_at: Date,
+        harvest_date: Date,
         created_at: OffsetDateTime,
         cultivar_id: ModelID,
         cultivar_name: String,
@@ -57,6 +57,9 @@ impl Harvest {
         coords: Option<serde_json::Value>,
         farm_id: ModelID,
         farm_name: String,
+        farm_logo: Option<String>,
+        farm_contact_number: Option<String>,
+        farm_contact_email: Option<String>,
         farm_owner_id: ModelID,
         farm_owner_first_name: String,
         farm_owner_last_name: Option<String>,
@@ -66,7 +69,13 @@ impl Harvest {
             id,
             name: cultivar_name.clone(),
             cultivar: ModelIdentifier::from_row(cultivar_id, cultivar_name),
-            farm: ModelIdentifier::from_row(farm_id, farm_name),
+            farm: HarvestFarm::from_row(
+                farm_id,
+                farm_name,
+                farm_logo,
+                farm_contact_number,
+                farm_contact_email,
+            ),
             farm_owner: UserIndex::from_row(
                 farm_owner_id,
                 farm_owner_first_name,
@@ -78,7 +87,7 @@ impl Harvest {
             description,
             cultivar_image,
             images,
-            available_at,
+            harvest_date,
             created_at: created_at.date(),
             location: HarvestLocation::from_row(location_id, place_name, region, country, coords),
         }
@@ -91,11 +100,12 @@ impl Harvest {
 pub struct HarvestIndex {
     pub id: ModelID,
     pub name: String,
-    pub farm: String,
+    pub farm_name: String,
+    pub farm_logo: Option<String>,
     pub price: Price,
     pub images: Option<Vec<String>>,
     pub cultivar_image: Option<String>,
-    pub available_at: Date,
+    pub harvest_date: Date,
     pub place_name: String,
     pub region: Option<String>,
     pub country: String,
@@ -114,7 +124,7 @@ impl HarvestIndex {
     pub fn from_row(
         id: ModelID,
         price: serde_json::Value,
-        available_at: Date,
+        harvest_date: Date,
         images: Option<Vec<String>>,
         cultivar_name: String,
         cultivar_image: Option<String>,
@@ -122,17 +132,19 @@ impl HarvestIndex {
         region: Option<String>,
         country: String,
         coords: Option<serde_json::Value>,
-        farm: String,
+        farm_name: String,
+        farm_logo: Option<String>,
         boost_amount: rust_decimal::Decimal,
     ) -> Self {
         Self {
             id,
             name: cultivar_name,
-            farm,
+            farm_name,
+            farm_logo,
             price: Price::from_row(price),
             images,
             cultivar_image,
-            available_at,
+            harvest_date,
             country,
             region,
             place_name,
@@ -169,6 +181,37 @@ impl HarvestLocation {
             region,
             country,
             coords: location::try_into_point(coords),
+        }
+    }
+}
+
+// A farm a harvest available at
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HarvestFarm {
+    pub id: ModelID,
+    pub name: String,
+    pub logo: Option<String>,
+    pub contact_number: Option<String>,
+    pub contact_email: Option<String>,
+}
+
+impl HarvestFarm {
+    /// Creates a new `HarvestFarm` from the database row
+    #[must_use]
+    pub fn from_row(
+        id: ModelID,
+        name: String,
+        logo: Option<String>,
+        contact_number: Option<String>,
+        contact_email: Option<String>,
+    ) -> Self {
+        Self {
+            id,
+            name,
+            logo,
+            contact_number,
+            contact_email,
         }
     }
 }

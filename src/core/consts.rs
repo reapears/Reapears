@@ -18,7 +18,7 @@ pub static SERVER_DOMAIN_NAME: OnceLock<String> = OnceLock::new();
 /// The default socket address the server is listening on.
 pub const DEFAULT_SERVER_ADDR: &str = "127.0.0.1";
 /// The default socket post the server is listening on.
-pub const DEFAULT_SERVER_PORT: &str = "3000";
+pub const DEFAULT_SERVER_PORT: &str = "4000";
 
 // ===== ACCOUNT =====
 
@@ -35,14 +35,14 @@ pub const MAX_DAYS_TO_DELETE_ACCOUNT: u8 = 90;
 
 /// Endpoints that are not protected with an API key;
 pub const UNAUTHENTICATED_ENDPOINTS: [&str; 6] = [
-    // Wep app endpoints
-    "/",
-    "/favicon.ico",
-    "/assets",
-    // Api endpoints
+    // "/account/signup" ??
     "/account/confirm",
     "/health-check",
     "/account/reset-password",
+    // Media endpoints
+    "/harvests/p",
+    "/cultivars/p",
+    "/account/users/photo",
 ];
 /// An error message for when a user entered a wrong password of username
 pub const INVALID_CREDENTIALS_ERR_MSG: &str = "The username or password you provided is incorrect.";

@@ -84,9 +84,10 @@ impl Cultivar {
                     cultivar_category.name AS cultivar_category,
                     harvest.id AS "harvest_id?",
                     harvest.price AS "harvest_price?",
-                    harvest.available_at AS "harvest_available_at?",
+                    harvest.harvest_date AS "harvest_harvest_date?",
                     harvest.images AS harvest_images,
                     farm.name AS "farm_name?",
+                    farm.logo AS farm_logo,
                     location_.place_name AS "location_place_name?",
                     location_.coords AS location_coords,
                     region.name AS "location_region?",
@@ -133,7 +134,7 @@ impl Cultivar {
                         HarvestIndex::from_row(
                             rec.harvest_id.unwrap().into(),
                             rec.harvest_price.unwrap(),
-                            rec.harvest_available_at.unwrap(),
+                            rec.harvest_harvest_date.unwrap(),
                             rec.harvest_images,
                             rec.cultivar_name,
                             rec.cultivar_image,
@@ -142,6 +143,7 @@ impl Cultivar {
                             rec.location_country.unwrap(),
                             rec.location_coords,
                             rec.farm_name.unwrap(),
+                            rec.farm_logo,
                             0.into(), // boost amount not important
                         )
                     })

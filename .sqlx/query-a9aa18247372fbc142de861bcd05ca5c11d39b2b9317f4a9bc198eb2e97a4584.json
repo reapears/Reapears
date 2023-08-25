@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE services.harvests harvest\n            SET finished = true,\n                images = NULL,\n                finished_at = $1\n\n            WHERE harvest.location_id = $2\n                AND NOT(\n                    harvest.harvest_date > $1 OR \n                    harvest.created_at > $3\n                )\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a9aa18247372fbc142de861bcd05ca5c11d39b2b9317f4a9bc198eb2e97a4584"
+}
