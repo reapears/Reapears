@@ -151,7 +151,7 @@ async fn process_incoming_message(
         IncomingMessage::MessageIsRead(msg_read_update) => {
             let message_ids = msg_read_update.messages.clone();
             match Conversation::update_is_read(user.id, message_ids, db).await {
-                Ok(_) => chat.broadcast(BroadcastMessage::message_is_read(
+                Ok(()) => chat.broadcast(BroadcastMessage::message_is_read(
                     msg_read_update.sender_id,
                     msg_read_update,
                 )),
@@ -166,7 +166,7 @@ async fn process_incoming_message(
 
         IncomingMessage::MessageDelete(msg) => {
             match Conversation::delete(user.id, msg.message_id, db).await {
-                Ok(_) => {}
+                Ok(()) => {}
                 Err(_err) => {
                     chat.broadcast(BroadcastMessage::message_error(
                         user.id,

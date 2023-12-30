@@ -46,12 +46,16 @@ impl fmt::Display for Price {
 pub enum Unit {
     Kg(u8),
     Crate,
+    Bundle,
+    Head,
 }
 
 impl fmt::Display for Unit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Crate => write!(f, "crate"),
+            Self::Bundle => write!(f, "bundle"),
+            Self::Head => write!(f, "head"),
             Self::Kg(n) => write!(f, "{n}kg"),
         }
     }

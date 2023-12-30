@@ -1,0 +1,61 @@
+/* 
+*
+* HEADER  CSS
+*
+*/
+
+.header {
+  max-width: var(--page-max-width);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 9rem;
+  padding: 0 1.7rem;
+  gap: 3rem;
+}
+
+.logo {
+  height: 2.2rem;
+}
+
+.header-navbar {
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+}
+
+.navbar-menu {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 5px;
+  padding-left: 12px;
+  gap: 1.1rem;
+  box-shadow: 0 3px 6px rgba(149, 157, 165, 0.14);
+  border: 1px solid #ddd;
+  border-radius: 27px;
+}
+
+.navbar-menu-line {
+  color: #444;
+}
+
+.navbar-cta {
+  display: none;
+  color: #222;
+}
+
+.navbar-menu-persona {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #666;
+  padding: 7px;
+  border-radius: 100%;
+}
+
+@media (min-width: 49em) {
+  .navbar-cta {
+    display: block;
+  }
+}

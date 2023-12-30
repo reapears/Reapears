@@ -2,9 +2,8 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, FromRequestParts, Json, Query},
+    extract::{rejection::JsonRejection, FromRequest, FromRequestParts, Json, Query, Request},
     http::request::Parts,
-    http::Request,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -40,7 +39,8 @@ impl FromRequestParts<ServerState> for ApiAuthentication {
             }
 
             // Extract key from url query.
-            let Ok(Query(key)) = Query::<ApiKeyQuery>::from_request_parts(parts, state).await else{
+            let Ok(Query(key)) = Query::<ApiKeyQuery>::from_request_parts(parts, state).await
+            else {
                 tracing::debug!("Request rejected no api key found");
                 return Err(EndpointRejection::unauthorized());
             };
@@ -146,14 +146,13 @@ pub struct ApiTokenForAppForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for ApiTokenForAppForm
+impl FromRequest<ServerState> for ApiTokenForAppForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut token) = Json::<Self>::from_request(req, state).await?;
 

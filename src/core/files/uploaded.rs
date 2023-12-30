@@ -21,14 +21,20 @@ impl UploadedFile {
     /// Parses `Multipart field` into an `UploadedFile`
     #[tracing::instrument(fields(file_name, content_type))]
     pub async fn try_from_field<'a>(field: Field<'a>) -> Result<Self, EndpointRejection> {
-        let Some(file_name) = field.file_name() else{
+        let Some(file_name) = field.file_name() else {
             tracing::error!("Rejected: uploaded file has no name");
             return Err(EndpointRejection::BadRequest("File name required".into()));
         };
         tracing::Span::current().record("file_name", file_name);
 
-        let Some(file_ext) = Path::new(file_name).extension().map(|ext|ext.to_string_lossy().to_string()) else {
-            tracing::error!("Rejected: uploaded file's name:{} has no extension", file_name);
+        let Some(file_ext) = Path::new(file_name)
+            .extension()
+            .map(|ext| ext.to_string_lossy().to_string())
+        else {
+            tracing::error!(
+                "Rejected: uploaded file's name:{} has no extension",
+                file_name
+            );
             return Err(EndpointRejection::BadRequest(
                 "File name has no extension".into(),
             ));
@@ -41,7 +47,7 @@ impl UploadedFile {
             .to_string_lossy()
             .to_string();
 
-        let Some(content_type) = field.content_type().map(std::borrow::ToOwned::to_owned) else{
+        let Some(content_type) = field.content_type().map(std::borrow::ToOwned::to_owned) else {
             tracing::error!("Rejected: uploaded file has no content type");
             return Err(EndpointRejection::BadRequest(
                 "Content type required".into(),

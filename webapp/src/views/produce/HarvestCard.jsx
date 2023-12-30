@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   makeStyles,
   shorthands,
-  Caption1,
-  Body1,
   Image,
   Badge,
   Text,
@@ -23,28 +21,21 @@ import {
 } from "../../endpoint";
 
 const useStyles = makeStyles({
-  title: {
-    ...shorthands.margin(0, 0, "12px"),
-  },
-
-  description: {
-    ...shorthands.margin(0, 0, "12px"),
-  },
-
   card: {
-    width: "250px",
     maxWidth: "100%",
     height: "fit-content",
-    // height: "370px",
+    ...shorthands.borderRadius("14px"),
+  },
+
+  cardPreviewImage: {
+    height: "24rem",
+    ...shorthands.borderRadius("14px"),
   },
 
   cardPreview: {
-    height: "200px",
-    // fit: "cover",
-  },
-
-  text: {
-    ...shorthands.margin(0),
+    height: "24rem",
+    fit: "cover",
+    ...shorthands.borderRadius("14px"),
   },
 });
 
@@ -58,81 +49,90 @@ export function HarvestCard(props) {
   }
 
   return (
-    <div>
-      <Card
-        onClick={openHarvestCard}
-        size="large"
-        className={styles.card}
-        {...props}
-      >
-        <CardPreview
-          className={styles.cardPreview}
-          logo={
-            <Avatar
-              shape="square"
-              size={32}
-              color="brand"
-              name={harvest.farmName}
-              image={{
-                src: harvest.farmLogo && farmLogoResolver(harvest.farmLogo),
-              }}
-            />
-          }
-        >
-          <Image
-            src={previewImage(harvest)}
-            alt={`${harvest.name} picture`}
-            fit="cover"
+    <Card
+      appearance="subtle"
+      onClick={openHarvestCard}
+      className={styles.card}
+      {...props}
+    >
+      <CardPreview
+        className={styles.cardPreview}
+        logo={
+          <Avatar
+            shape="square"
+            active="active"
+            activeAppearance="ring-shadow"
+            size={32}
+            color="brand"
+            name={harvest.farmName}
+            image={{
+              src: harvest.farmLogo && farmLogoResolver(harvest.farmLogo),
+            }}
           />
-        </CardPreview>
-
-        <CardHeader
-          header={
-            <Body1>
-              <b>{harvest.name}</b>
-            </Body1>
-          }
-          description={
-            harvest.type && (
-              <Badge appearance="tint" italic>
-                {harvest.type}
-              </Badge>
-            )
-          }
-          // action={
-          //   <Button
-          //     appearance="transparent"
-          //     icon={<MoreHorizontal20Filled />}
-          //     aria-label="More options"
-          //   />
-          // }
+        }
+      >
+        <Image
+          className={styles.cardPreviewImage}
+          src={previewImage(harvest)}
+          alt={`${harvest.name} picture`}
+          fit="cover"
         />
+      </CardPreview>
 
-        <ul>
-          <li>
-            <Price price={harvest.price} />
-          </li>
+      <CardHeader
+        header={
+          <Text size={400} weight="semibold">
+            {harvest.name}
+          </Text>
+        }
+        description={
+          harvest.type ? (
+            <Badge appearance="tint" italic>
+              {harvest.type.toLowerCase()}
+            </Badge>
+          ) : (
+            <Badge appearance="tint" italic>
+              {harvest.category.toLowerCase()}
+            </Badge>
+          )
+        }
+      />
 
-          <li>
-            <Text size={400}>{harvest.placeName} </Text>
-            <Location12Regular />
-          </li>
-          <li>
-            <Caption1>{harvest.region}</Caption1>
-          </li>
+      <ul className="harvest-card-inner-list">
+        <li>
+          <Price price={harvest.price} />
+        </li>
 
-          <li>
-            <Body1>{toDisplayDate(harvest.harvestDate)}</Body1>
-          </li>
-        </ul>
-      </Card>
-    </div>
+        <li>
+          <Text>{toHarvestLocation(harvest)} </Text>
+          <Location12Regular />
+        </li>
+
+        <li>
+          <Text>{toDisplayDate(harvest.harvestDate)}</Text>
+        </li>
+      </ul>
+    </Card>
   );
 }
 
 // ===== Util functions impls =====
 
 function previewImage(harvest) {
+  if (harvest.name === "Watermelon") {
+    return cultivarImageResolver("watermelons-1.jpg");
+  }
+
+  if (harvest.name === "Onion") {
+    return cultivarImageResolver("Onions-1.jpg");
+  }
+  if (harvest.name === "Butternuts") {
+    return cultivarImageResolver("butternuts-1.jpg");
+  }
+
+  if (harvest.name === "Mango") {
+    return cultivarImageResolver("magoes-1.jpg");
+  }
   if (harvest.images) {
     return harvestImageResolver(harvest.images[0]);
   }
@@ -140,11 +140,14 @@ function previewImage(harvest) {
   return cultivarImageResolver("cultivar-default.jpg");
 }
 
+function toHarvestLocation(harvest) {
+  return `${harvest.placeName}, ${harvest.region}`;
+}
+
 function toDisplayDate(date) {
   const harvestDate = new Date(date);
-  const prefix =
-    Date.now() > harvestDate ? "Harvesting started" : "Harvesting start";
+  const prefix = Date.now() > harvestDate ? "Harvest began" : "Harvest begin";
   const options = { year: "numeric", month: "short", day: "numeric" };
   const localeDate = harvestDate.toLocaleDateString(undefined, options);
-  return `${prefix} - ${localeDate} `;
+  return `${prefix} - ${localeDate}`;
 }

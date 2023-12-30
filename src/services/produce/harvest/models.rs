@@ -22,6 +22,7 @@ pub type HarvestList = Vec<HarvestIndex>;
 pub struct Harvest {
     pub id: ModelID,
     pub name: String,
+    pub category: String,
     pub cultivar: ModelIdentifier,
     pub farm: HarvestFarm,
     pub farm_owner: UserIndex,
@@ -49,6 +50,7 @@ impl Harvest {
         created_at: OffsetDateTime,
         cultivar_id: ModelID,
         cultivar_name: String,
+        cultivar_category: String,
         cultivar_image: Option<String>,
         location_id: ModelID,
         place_name: String,
@@ -68,6 +70,7 @@ impl Harvest {
         Self {
             id,
             name: cultivar_name.clone(),
+            category: cultivar_category,
             cultivar: ModelIdentifier::from_row(cultivar_id, cultivar_name),
             farm: HarvestFarm::from_row(
                 farm_id,
@@ -100,6 +103,7 @@ impl Harvest {
 pub struct HarvestIndex {
     pub id: ModelID,
     pub name: String,
+    pub category: String,
     pub farm_name: String,
     pub farm_logo: Option<String>,
     pub price: Price,
@@ -127,6 +131,7 @@ impl HarvestIndex {
         harvest_date: Date,
         images: Option<Vec<String>>,
         cultivar_name: String,
+        cultivar_category: String,
         cultivar_image: Option<String>,
         place_name: String,
         region: Option<String>,
@@ -138,6 +143,7 @@ impl HarvestIndex {
     ) -> Self {
         Self {
             id,
+            category: cultivar_category,
             name: cultivar_name,
             farm_name,
             farm_logo,

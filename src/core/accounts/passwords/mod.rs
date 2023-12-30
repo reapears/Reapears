@@ -29,7 +29,7 @@ pub async fn check_password(
     password: String,
     db: DatabaseConnection,
 ) -> ServerResult<()> {
-    let Some(phc_string) = PasswordModel::find(user_id, db).await? else{
+    let Some(phc_string) = PasswordModel::find(user_id, db).await? else {
         tracing::error!("Database error, user could not be found");
         return Err(ServerError::new("User could not be found"));
     };
@@ -66,7 +66,7 @@ fn add_password_verified_cookie(jar: PrivateCookieJar) -> PrivateCookieJar {
 /// Removes password verified cookie
 #[must_use]
 pub fn remove_password_verified_cookie(jar: PrivateCookieJar) -> PrivateCookieJar {
-    let jar = jar.remove(Cookie::named(PASSWORD_VERIFIED));
+    let jar = jar.remove(Cookie::build(PASSWORD_VERIFIED));
     jar
 }
 

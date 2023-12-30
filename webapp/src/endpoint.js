@@ -6,6 +6,14 @@ const API_KEY =
   "gTzEV0yMeZqJw1yuQ8QjrUAKl0tk6pwY7c9vFDKeZ1o9fghLsOsGbnjuBOMovpuDS1aAuZVDsfZ3gsif48S7a4QoyXOGjZAO";
 
 /**
+ *
+ * @returns
+ */
+export function assetsUrl(path) {
+  return `./assets/${path}`;
+}
+
+/**
  * Construct a url to the server api
  * @param {string} path url path and optional query parameters
  * @returns server(Reapears) api URL to the path provided

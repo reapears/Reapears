@@ -1,0 +1,112 @@
+/* 
+*
+* PRODUCE PAGE & HARVEST CARD  CSS
+*
+*/
+
+.container {
+  max-width: var(--page-max-width);
+  width: 100%;
+  padding: 0 4rem;
+  margin: 1.4rem 0 4.8rem;
+}
+
+.produce-container {
+  display: grid;
+  column-gap: 2.4rem;
+  row-gap: 3.8rem; /*40px*/
+  justify-self: center;
+  grid-auto-flow: row dense;
+  grid-template-columns: repeat(var(--breakpoint-grid_columns, 1), 1fr);
+}
+
+/* 
+* Produce Header
+ */
+
+.produce-header {
+  background-color: rgba(255, 255, 255, 0.99);
+  position: fixed;
+  position: sticky;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 999;
+}
+
+/* 
+* HARVEST CARD 
+*/
+
+.harvest-card-inner-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+}
+
+.cultivar-filter {
+  max-width: var(--page-max-width);
+  width: 100%;
+  padding: 0.6rem 0.3rem;
+  overflow-x: scroll;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  box-shadow: 0 3px 6px rgba(149, 157, 165, 0.14);
+}
+
+.cultivar-filter::-webkit-scrollbar {
+  display: none;
+  width: 0 !important;
+}
+
+.cultivar-filter--tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-right: 10px;
+  margin-left: 10px;
+}
+
+
+
+.cultivar-filter--tab-title {
+  text-align: center;
+}
+
+/* 
+*
+* MEDIA QUERIES
+*
+*/
+
+@media (min-width: 550px) {
+  .produce-container {
+    --breakpoint-grid_columns: 2;
+  }
+}
+
+@media (min-width: 950px) {
+  .produce-container {
+    --breakpoint-grid_columns: 3;
+  }
+}
+
+@media (min-width: 1128px) {
+  .produce-container {
+    --breakpoint-grid_columns: 4;
+  }
+}
+
+@media (min-width: 1640px) {
+  .produce-container {
+    --breakpoint-grid_columns: 5;
+  }
+}
+
+@media (min-width: 1880px) {
+  .produce-container {
+    --breakpoint-grid_columns: 6;
+  }
+}

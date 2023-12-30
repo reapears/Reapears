@@ -1,10 +1,27 @@
+/* 
+* IMPORTS
+*/
+@import url("./css/footer.css");
+@import url("./css/header.css");
+@import url("./css/produce.css");
+
+/* 
+* VARIABLES DEFINITION
+*/
+:root {
+  --breakpoint-grid_columns: 1;
+  --page-max-width: 225rem;
+}
+
+/* 
+* GENERAL STYLES
+*/
 *,
 *::after,
 *::before {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-
   text-decoration: none;
   list-style: none;
 }
@@ -12,22 +29,80 @@
 html {
   font-size: 62.5%; /* 10px / 16px = 0.625 */
   scroll-behavior: smooth;
+  -ms-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   font-family: "Rubik", sans-serif;
   line-height: 1;
   font-weight: 400;
+  line-height: 1.43;
+  color: #222;
+  background-color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-
-  max-width: 1024px;
-  margin: auto;
 }
 
-/* main {
-  max-width: 1024px;
-  margin: auto;
+.hidden {
+  display: none;
+}
+
+/* display: grid;
+    grid-auto-flow: row dense;
+    grid-auto-rows: var(--breakpoint-grid_auto-rows, minmax(min-content,max-content) );
+    grid-gap: var(--breakpoint-grid_row-gap,0) var(--breakpoint-grid_column-gap,0);
+    grid-template-columns: var(--breakpoint-grid_column-template, repeat(var(--breakpoint-grid_columns,1),minmax(0,1fr)) );
 } */
+
+/* .grid {
+  display: grid;
+  column-gap: 6.4rem;
+  row-gap: 9.6rem;
+}
+
+.grid:not(:last-child) {
+  margin-bottom: 9.6rem;
+}
+
+.grid--2-cols {
+  grid-template-columns: repeat(2, 1fr);
+}
+.grid--3-cols {
+  grid-template-columns: repeat(3, 1fr);
+}
+.grid--4-cols {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.grid--5-cols {
+  grid-template-columns: repeat(5, 1fr);
+} 
+
+.grid-center-v {
+  align-items: center;
+} */
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  /* padding-bottom: 0; */
+
+  padding: 0;
+  margin: 0;
+  /* margin-left: 0; */
+  /* gap: 1.4rem; */
+}
+
+.list-item {
+  /* font-size: 1.8rem; */
+  display: flex;
+  gap: 1.4rem;
+  align-items: center;
+}
 
 strong {
   font-weight: 500;
@@ -55,8 +130,9 @@ $bp-smallest: 31.25em;  */
 #7dd567
 */
 
-h1,
+/* h1,
 h2,
+
 h3,
 h5,
 h6 {
@@ -68,4 +144,4 @@ ul,
 ol {
   margin-bottom: 2em;
   color: #1d1d1d;
-}
+} */

@@ -137,6 +137,7 @@ impl Cultivar {
                             rec.harvest_harvest_date.unwrap(),
                             rec.harvest_images,
                             rec.cultivar_name,
+                            rec.cultivar_category,
                             rec.cultivar_image,
                             rec.location_place_name.unwrap(),
                             rec.location_region,

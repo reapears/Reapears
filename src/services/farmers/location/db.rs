@@ -103,6 +103,7 @@ impl Location {
                     harvest.harvest_date AS "harvest_harvest_date?",
                     harvest.images AS harvest_images,
                     cultivar.name AS "cultivar_name?",
+                    cultivar_category.name AS "cultivar_category?",
                     cultivar.image AS cultivar_image
                 FROM services.locations location_
                 LEFT JOIN services.farms farm
@@ -115,6 +116,8 @@ impl Location {
                     ON location_.id = harvest.location_id
                 LEFT JOIN services.cultivars cultivar
                     ON harvest.cultivar_id = cultivar.id
+                LEFT JOIN services.cultivar_categories cultivar_category
+                    ON cultivar.category_id = cultivar_category.id
 
                 WHERE location_.id = $1
                 ORDER BY harvest.created_at
@@ -151,6 +154,7 @@ impl Location {
                             rec.harvest_harvest_date.unwrap(),
                             rec.harvest_images,
                             rec.cultivar_name.unwrap(),
+                            rec.cultivar_category.unwrap(),
                             rec.cultivar_image,
                             rec.location_place_name,
                             rec.location_region,

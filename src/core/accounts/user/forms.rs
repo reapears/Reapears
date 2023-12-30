@@ -2,8 +2,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, Json},
-    http::Request,
+    extract::{rejection::JsonRejection, FromRequest, Json, Request},
 };
 use serde::Deserialize;
 use time::{Date, OffsetDateTime};
@@ -97,14 +96,13 @@ impl SignUpForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for SignUpForm
+impl FromRequest<ServerState> for SignUpForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut signup) = Json::<Self>::from_request(req, state).await?;
 
@@ -181,14 +179,13 @@ impl AccountLockForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for AccountLockForm
+impl FromRequest<ServerState> for AccountLockForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut account_lock) = Json::<Self>::from_request(req, state).await?;
 
@@ -209,14 +206,13 @@ pub struct UserIdForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for UserIdForm
+impl FromRequest<ServerState> for UserIdForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(account_unlock) = Json::<Self>::from_request(req, state).await?;
 

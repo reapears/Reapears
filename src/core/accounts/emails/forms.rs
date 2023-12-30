@@ -2,8 +2,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, Json},
-    http::Request,
+    extract::{rejection::JsonRejection, FromRequest, Json, Request},
 };
 use serde::Deserialize;
 use time::OffsetDateTime;
@@ -97,14 +96,13 @@ impl EmailForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for EmailForm
+impl FromRequest<ServerState> for EmailForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut email) = Json::<Self>::from_request(req, state).await?;
 
@@ -141,14 +139,13 @@ impl CodeConfirmForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for CodeConfirmForm
+impl FromRequest<ServerState> for CodeConfirmForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut code) = Json::<Self>::from_request(req, state).await?;
 

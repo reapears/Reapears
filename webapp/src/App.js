@@ -5,11 +5,9 @@ import { QueryClient, QueryClientProvider } from "react-query";
 import { FluentProvider } from "@fluentui/react-components";
 
 import { store } from "./store";
-import { Header, Footer } from "./components";
-import { UIRouter } from "./routes/UIRouter";
-import { lightBrownTheme } from "./ui/theme";
 
-import "./App.css";
+import { UIRouter } from "./routes/UIRouter";
+import { lightBrownTheme } from "./themes";
 
 const queryClient = new QueryClient();
 
@@ -19,9 +17,7 @@ function App() {
       <FluentProvider theme={lightBrownTheme}>
         <Provider store={store}>
           <QueryClientProvider client={queryClient}>
-            <Header />
             <UIRouter />
-            <Footer />
           </QueryClientProvider>
         </Provider>
       </FluentProvider>

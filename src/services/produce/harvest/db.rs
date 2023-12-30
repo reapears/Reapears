@@ -32,6 +32,7 @@ impl Harvest {
                     harvest.harvest_date AS "harvest_harvest_date!",
                     harvest.images AS harvest_images,
                     cultivar.name AS cultivar_name,
+                    cultivar_category.name AS cultivar_category,
                     cultivar.image AS cultivar_image, 
                     farm.name AS farm_name,
                     farm.logo AS farm_logo,
@@ -44,6 +45,8 @@ impl Harvest {
                 FROM services.active_harvests harvest
                 LEFT JOIN services.cultivars cultivar
                     ON harvest.cultivar_id = cultivar.id
+                LEFT JOIN services.cultivar_categories cultivar_category
+                    ON cultivar.category_id = cultivar_category.id
                 LEFT JOIN services.locations location_
                     ON harvest.location_id = location_.id
                 LEFT JOIN services.farms farm
@@ -68,6 +71,7 @@ impl Harvest {
                 rec.harvest_harvest_date,
                 rec.harvest_images,
                 rec.cultivar_name,
+                rec.cultivar_category,
                 rec.cultivar_image,
                 rec.location_place_name,
                 rec.location_region,
@@ -93,6 +97,7 @@ impl Harvest {
                     harvest.harvest_date AS "harvest_harvest_date!",
                     harvest.images AS harvest_images,
                     cultivar.name AS cultivar_name,
+                    cultivar_category.name AS cultivar_category,
                     cultivar.image AS cultivar_image, 
                     farm.name AS farm_name,
                     farm.logo AS farm_logo,
@@ -105,6 +110,8 @@ impl Harvest {
                 FROM services.active_harvests harvest
                 LEFT JOIN services.cultivars cultivar
                     ON harvest.cultivar_id = cultivar.id
+                LEFT JOIN services.cultivar_categories cultivar_category
+                    ON cultivar.category_id = cultivar_category.id
                 LEFT JOIN services.locations location_
                     ON harvest.location_id = location_.id
                 LEFT JOIN services.farms farm
@@ -138,6 +145,7 @@ impl Harvest {
                             rec.harvest_harvest_date,
                             rec.harvest_images,
                             rec.cultivar_name,
+                            rec.cultivar_category,
                             rec.cultivar_image,
                             rec.location_place_name,
                             rec.location_region,
@@ -175,6 +183,7 @@ impl Harvest {
                     harvest.images AS harvest_images,
                     harvest.created_at AS "harvest_created_at!",
                     cultivar.name AS cultivar_name,
+                    cultivar_category.name AS cultivar_category,
                     cultivar.image AS cultivar_image, 
                     farm.id AS farm_id,
                     farm.name AS farm_name,
@@ -193,6 +202,8 @@ impl Harvest {
                 FROM services.active_harvests harvest
                 LEFT JOIN services.cultivars cultivar
                     ON harvest.cultivar_id = cultivar.id
+                LEFT JOIN services.cultivar_categories cultivar_category
+                    ON cultivar.category_id = cultivar_category.id
                 LEFT JOIN services.locations location_
                     ON harvest.location_id = location_.id
                 LEFT JOIN services.farms farm
@@ -224,6 +235,7 @@ impl Harvest {
                     rec.harvest_created_at,
                     rec.cultivar_id.into(),
                     rec.cultivar_name,
+                    rec.cultivar_category,
                     rec.cultivar_image,
                     rec.location_id.into(),
                     rec.location_place_name,

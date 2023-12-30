@@ -2,8 +2,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, Json},
-    http::Request,
+    extract::{rejection::JsonRejection, FromRequest, Json, Request},
 };
 use serde::Deserialize;
 use time::Date;
@@ -79,14 +78,13 @@ impl PersonalInfoUpdateForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for PersonalInfoUpdateForm
+impl FromRequest<ServerState> for PersonalInfoUpdateForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut personal_info) = Json::<Self>::from_request(req, state).await?;
 

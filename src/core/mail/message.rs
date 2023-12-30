@@ -56,9 +56,9 @@ impl EmailMessage {
             .to(format!("<{to}>").parse().unwrap())
             .subject(subject)
             .multipart(body)
-            else{
-                return  Err(ServerError::new("Failed to build email message"));
-            };
+        else {
+            return Err(ServerError::new("Failed to build email message"));
+        };
 
         Ok(Self { message })
     }
@@ -66,12 +66,13 @@ impl EmailMessage {
     /// Create new plain text email message
     pub fn write_plain(from: &str, to: &str, subject: String, body: String) -> ServerResult<Self> {
         let Ok(message) = Message::builder()
-            .from(format!("{APP_NAME} <{from}>", ).parse().unwrap())
+            .from(format!("{APP_NAME} <{from}>",).parse().unwrap())
             .to(format!("<{to}>").parse().unwrap())
             .subject(subject)
             .header(ContentType::TEXT_PLAIN)
-            .body(body)else{
-            return  Err(ServerError::new("Failed to build email message"));
+            .body(body)
+        else {
+            return Err(ServerError::new("Failed to build email message"));
         };
         Ok(Self { message })
     }

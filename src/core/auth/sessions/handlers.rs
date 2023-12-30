@@ -1,11 +1,7 @@
 //! Session http handlers impls
 
-use axum::{
-    extract::{Query, State},
-    headers::UserAgent,
-    TypedHeader,
-};
-use axum_extra::extract::PrivateCookieJar;
+use axum::extract::{Query, State};
+use axum_extra::{extract::PrivateCookieJar, headers::UserAgent, TypedHeader};
 
 use crate::{
     auth::{get_current_user, CurrentUser},

@@ -35,7 +35,7 @@ pub async fn api_key_delete(
 ) -> EndpointResult<StatusCode> {
     ApiToken::delete_by_id(token_id, db).await.map_or_else(
         |_err| Err(EndpointRejection::internal_server_error()),
-        |_| Ok(StatusCode::NO_CONTENT),
+        |()| Ok(StatusCode::NO_CONTENT),
     )
 }
 

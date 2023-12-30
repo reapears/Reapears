@@ -2,8 +2,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, Json},
-    http::Request,
+    extract::{rejection::JsonRejection, FromRequest, Json, Request},
 };
 use serde::Deserialize;
 
@@ -39,14 +38,13 @@ impl PasswordVerifyForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for PasswordVerifyForm
+impl FromRequest<ServerState> for PasswordVerifyForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut password_verify) = Json::<Self>::from_request(req, state).await?;
 
@@ -95,14 +93,13 @@ impl PasswordChangeForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for PasswordChangeForm
+impl FromRequest<ServerState> for PasswordChangeForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(password_change) = Json::<Self>::from_request(req, state).await?;
 
@@ -140,14 +137,13 @@ impl PasswordForgotForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for PasswordForgotForm
+impl FromRequest<ServerState> for PasswordForgotForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut password_forgot) = Json::<Self>::from_request(req, state).await?;
 
@@ -193,14 +189,13 @@ impl PasswordResetForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for PasswordResetForm
+impl FromRequest<ServerState> for PasswordResetForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         let Json(password_reset) = Json::<Self>::from_request(req, state).await?;
 
         // Validate form fields

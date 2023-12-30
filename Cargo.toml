@@ -9,7 +9,7 @@ edition = "2021"
 dev = ["console-subscriber", "color-eyre"]
 
 [dependencies]
-tokio = { version = "1.32.0", features = [
+tokio = { version = "1.35.1", features = [
     "rt-multi-thread",
     "fs",
     "time",
@@ -20,14 +20,18 @@ tokio = { version = "1.32.0", features = [
     "macros",
     "tracing",
 ] }
-axum = { version = "0.6.20", features = [
+axum = { version = "0.7.3", features = [
     "multipart",
     "ws",
-    "headers",
     "tracing",
     "macros",
 ] }
-axum-extra = { version = "0.7.7", features = ["cookie-private", "query"] }
+headers = "0.4.0"
+axum-extra = { version = "0.9.1", features = [
+    "cookie-private",
+    "query",
+    "typed-header",
+] }
 tower = { version = "0.4.13", features = [
     "buffer",
     "limit",
@@ -35,7 +39,7 @@ tower = { version = "0.4.13", features = [
     "timeout",
     "util",
 ] }
-tower-http = { version = "0.4.3", features = [
+tower-http = { version = "0.5", features = [
     "catch-panic",
     "cors",
     "fs",
@@ -49,13 +53,13 @@ tower-http = { version = "0.4.3", features = [
     "trace",
     "util",
 ] }
-bytes = "1.4.0"
-futures-util = "0.3.28"
+bytes = "1.5.0"
+futures-util = "0.3.29"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # 
-sqlx = { version = "0.7.1", default-features = false, features = [
+sqlx = { version = "0.7.3", default-features = false, features = [
     "tls-rustls",
     "runtime-tokio",
     "postgres",
@@ -66,7 +70,7 @@ sqlx = { version = "0.7.1", default-features = false, features = [
     "uuid",
     "rust_decimal",
 ] }
-lettre = { version = "0.10.4", default-features = false, features = [
+lettre = { version = "0.11.2", default-features = false, features = [
     "builder",
     "hostname",
     "smtp-transport",
@@ -74,33 +78,33 @@ lettre = { version = "0.10.4", default-features = false, features = [
     "hostname",
     "tokio1-rustls-tls",
 ] }
-minijinja = "1.0.6"
+minijinja = "1.0.10"
 image = { version = "0.24.7", features = ["webp-encoder"] }
 
 # 
-password-auth = "0.3.0"
-blake3 = "1.4.1"
+password-auth = "1.0.0"
+blake3 = "1.5.0"
 rand = "0.8.5"
 
 # 
-itertools = "0.11.0"
-geo = { version = "0.26.0", features = ["use-serde"] }
-uuid = { version = "1.4.1", features = ["v7", "fast-rng", "serde"] }
-time = { version = "0.3.27", features = ["serde-human-readable"] }
-phonenumber = "0.3.2"
-rust_decimal = "1.32.0"
+itertools = "0.12.0"
+geo = { version = "0.27.0", features = ["use-serde"] }
+uuid = { version = "1.6.1", features = ["v7", "fast-rng", "serde"] }
+time = { version = "0.3.30", features = ["serde-human-readable"] }
+phonenumber = "0.3.3"
+rust_decimal = "1.33.1"
 
 # 
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 # opentelemetry = "0.19.0"
 # tracing-opentelemetry = "0.19.0"
 # opentelemetry-jaeger = "0.18.0"
-console-subscriber = { version = "0.1.9", optional = true }
+console-subscriber = { version = "0.2.0", optional = true }
 color-eyre = { version = "0.6.2", optional = true }
 
 # 
-clap = { version = "4.3.19", features = ["derive"] }
+clap = { version = "4.4.12", features = ["derive"] }
 dotenvy = "0.15.7"
 
 

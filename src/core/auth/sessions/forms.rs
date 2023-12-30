@@ -2,8 +2,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, Json},
-    http::Request,
+    extract::{rejection::JsonRejection, FromRequest, Json, Request},
 };
 use serde::Deserialize;
 use time::OffsetDateTime;
@@ -94,14 +93,13 @@ impl LoginForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for LoginForm
+impl FromRequest<ServerState> for LoginForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         let Json(mut login) = Json::<Self>::from_request(req, state).await?;
 
         // Validate form fields
@@ -110,8 +108,10 @@ where
         let db = state.database.clone();
         let email = login.email.clone();
 
-        let Some(user) = Session::find_user_by_email(email.clone(), db.clone()).await? else{
-            return Err(EndpointRejection::BadRequest(crate::INVALID_CREDENTIALS_ERR_MSG.into()));
+        let Some(user) = Session::find_user_by_email(email.clone(), db.clone()).await? else {
+            return Err(EndpointRejection::BadRequest(
+                crate::INVALID_CREDENTIALS_ERR_MSG.into(),
+            ));
         };
 
         if !user.email_verified {

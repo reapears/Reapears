@@ -32,6 +32,6 @@ fn add_session_cookie(jar: PrivateCookieJar, token: String) -> PrivateCookieJar 
 /// Removes session cookie from cookie jar
 #[must_use]
 fn remove_session_cookie(jar: PrivateCookieJar) -> PrivateCookieJar {
-    let jar = jar.remove(Cookie::named(SESSION_TOKEN));
+    let jar = jar.remove(Cookie::build(SESSION_TOKEN));
     jar
 }

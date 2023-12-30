@@ -65,17 +65,21 @@ pub async fn account_confirm(
     confirm_token: Option<Query<TokenConfirm>>,
     State(db): State<DatabaseConnection>,
 ) -> EndpointResult<&'static str> {
-    let Some(Query(confirm_token)) = confirm_token else{
-        return Err(EndpointRejection::BadRequest("Confirmation token required!".into()));
+    let Some(Query(confirm_token)) = confirm_token else {
+        return Err(EndpointRejection::BadRequest(
+            "Confirmation token required!".into(),
+        ));
     };
 
     let token = hash_token(confirm_token.token.as_bytes());
 
     let Some((user_id, email, Some(token_generated_at))) =
-        EmailModel::find_by_token(token, db.clone()).await? else{
+        EmailModel::find_by_token(token, db.clone()).await?
+    else {
         return Err(EndpointRejection::BadRequest(
             "Your confirmation link is no longer valid. \
-Your account may already be activated or may have cancelled your registration.".into(),
+Your account may already be activated or may have cancelled your registration."
+                .into(),
         ));
     };
 

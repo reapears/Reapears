@@ -80,7 +80,7 @@ impl CurrentUser {
 
     /// Authenticate and get user by Session token.
     pub async fn from_cookies(token: TokenHash, db: DatabaseConnection) -> EndpointResult<Self> {
-        let Some(user) = get_current_user(token, db.clone()).await? else{
+        let Some(user) = get_current_user(token, db.clone()).await? else {
             return Err(EndpointRejection::unauthorized());
         };
 
@@ -92,13 +92,13 @@ impl CurrentUser {
 
     /// Authenticate and get user by Api key.
     pub async fn from_api_key(parts: &mut Parts, state: &ServerState) -> EndpointResult<Self> {
-        let Ok(Query(key)) = Query::<ApiKeyQuery>::from_request_parts(parts, state).await else{
+        let Ok(Query(key)) = Query::<ApiKeyQuery>::from_request_parts(parts, state).await else {
             tracing::debug!("Request rejected no api key found");
             return Err(EndpointRejection::unauthorized());
         };
 
         let token = auth::hash_token(key.api_key.as_bytes());
-        let Some(user) = get_current_user_by_api_key(token, state.database.clone()).await? else{
+        let Some(user) = get_current_user_by_api_key(token, state.database.clone()).await? else {
             return Err(EndpointRejection::unauthorized());
         };
 

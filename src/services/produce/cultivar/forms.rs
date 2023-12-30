@@ -2,8 +2,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, Json},
-    http::Request,
+    extract::{rejection::JsonRejection, FromRequest, Json, Request},
 };
 use serde::Deserialize;
 
@@ -62,14 +61,13 @@ impl CultivarCreateForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for CultivarCreateForm
+impl FromRequest<ServerState> for CultivarCreateForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut cultivar) = Json::<Self>::from_request(req, state).await?;
 
@@ -126,14 +124,13 @@ impl CultivarUpdateForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for CultivarUpdateForm
+impl FromRequest<ServerState> for CultivarUpdateForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let Json(mut cultivar) = Json::<Self>::from_request(req, state).await?;
 

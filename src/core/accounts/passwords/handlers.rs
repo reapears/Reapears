@@ -62,14 +62,18 @@ pub async fn password_reset(
 ) -> EndpointResult<&'static str> {
     static ERR_MSG: &str = "Your password rest link is no longer valid.";
 
-    let Some(Query(confirm_token)) = confirm_token else{
-        return Err(EndpointRejection::BadRequest("Password reset token required!".into()));
+    let Some(Query(confirm_token)) = confirm_token else {
+        return Err(EndpointRejection::BadRequest(
+            "Password reset token required!".into(),
+        ));
     };
 
     let token = confirm_token.token;
     // Verify token
     let token_hash = hash_token(token.as_bytes());
-    let Some((user_id, token_created_at)) = PasswordModel::find_token(token_hash, db.clone()).await? else{
+    let Some((user_id, token_created_at)) =
+        PasswordModel::find_token(token_hash, db.clone()).await?
+    else {
         return Err(EndpointRejection::BadRequest(ERR_MSG.into()));
     };
     if password_reset_token_expired(token_created_at) {
@@ -92,8 +96,12 @@ pub async fn password_forgot(
 ) -> EndpointResult<&'static str> {
     let (plaintext, hash) = Token::default().into_parts();
     let email_address = form.email;
-    let Some((user_id, first_name)) = User::find_by_email(email_address.clone(), db.clone()).await? else{
-        return Err(EndpointRejection::BadRequest("Sorry, we could not find your account.".into()));
+    let Some((user_id, first_name)) =
+        User::find_by_email(email_address.clone(), db.clone()).await?
+    else {
+        return Err(EndpointRejection::BadRequest(
+            "Sorry, we could not find your account.".into(),
+        ));
     };
     PasswordModel::insert_token(user_id, hash, db).await?;
 

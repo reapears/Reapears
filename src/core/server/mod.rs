@@ -7,7 +7,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use clap::Parser;
-use tokio::signal;
+use tokio::{net::TcpListener, signal};
 use tower::{limit::GlobalConcurrencyLimitLayer, ServiceBuilder};
 use tower_http::{
     catch_panic::CatchPanicLayer, classify::StatusInRangeAsFailures, cors::CorsLayer,
@@ -45,7 +45,7 @@ pub async fn run() {
     let addr = config.local_addr;
     let state = ServerState::from_config(config).await;
 
-    let app_server = server_routers()
+    let app = server_routers()
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(handle_error))
@@ -87,8 +87,8 @@ pub async fn run() {
     tokio::spawn(server_maintenance(state));
 
     tracing::debug!("Listening on: {addr}");
-    axum::Server::bind(&addr)
-        .serve(app_server.into_make_service())
+    let listener = TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
@@ -228,8 +228,8 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+        () = ctrl_c => {},
+        () = terminate => {},
     }
 
     tracing::trace!("Signal received, starting graceful shutdown...");

@@ -25,7 +25,7 @@ impl FromRequestParts<ServerState> for LocationDeletePermission {
         let location_id = ModelID::from_request_parts(parts, state).await?;
 
         check_user_owns_location(user.id(), location_id, state.database.clone()).await?;
-        let Some(count) = get_location_count(location_id, state.database.clone()).await? else{
+        let Some(count) = get_location_count(location_id, state.database.clone()).await? else {
             return Err(EndpointRejection::forbidden());
         };
 

@@ -1,4 +1,3 @@
-
 import { createLightTheme, createDarkTheme } from "@fluentui/react-components";
 
 const brownTheme = {
@@ -31,12 +30,9 @@ const darkBrownTheme = {
 darkBrownTheme.colorBrandForeground1 = brownTheme[110];
 darkBrownTheme.colorBrandForeground2 = brownTheme[120];
 
-export { brownTheme, lightBrownTheme, darkBrownTheme };
+// ======== OLIVE GREEN THEME
 
-
-// ======== Dark greeen theme
-
-const greenTheme: BrandVariants = { 
+const oliveGreenTheme = {
   10: "#040401",
   20: "#1B1A09",
   30: "#2B2C0F",
@@ -52,17 +48,25 @@ const greenTheme: BrandVariants = {
   130: "#B4B567",
   140: "#C3C384",
   150: "#D2D2A2",
-  160: "#E1E0C0"
-  };
-  
-   const lightGreenTheme: Theme = {
-     ...createLightTheme(greenTheme), 
-  };
-  
-   const darkGreenTheme: Theme = {
-     ...createDarkTheme(greenTheme), 
-  };
-   
-  
- darkGreenTheme.colorBrandForeground1 = greenTheme[110];
- darkGreenTheme.colorBrandForeground2 = greenTheme[120];
+  160: "#E1E0C0",
+};
+
+const lightOliveGreenTheme = {
+  ...createLightTheme(oliveGreenTheme),
+};
+
+const darkOliveGreenTheme = {
+  ...createDarkTheme(oliveGreenTheme),
+};
+
+darkOliveGreenTheme.colorBrandForeground1 = oliveGreenTheme[110];
+darkOliveGreenTheme.colorBrandForeground2 = oliveGreenTheme[120];
+
+export {
+  brownTheme,
+  lightBrownTheme,
+  darkBrownTheme,
+  lightOliveGreenTheme,
+  darkOliveGreenTheme,
+  oliveGreenTheme,
+};

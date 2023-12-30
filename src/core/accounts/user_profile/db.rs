@@ -49,6 +49,7 @@ impl UserProfile {
                 harvest.images AS harvest_images,
                 harvest.harvest_date AS "harvest_harvest_date?",
                 cultivar.name AS "cultivar_name?",
+                cultivar_category.name AS "cultivar_category?",
                 cultivar.image AS cultivar_image
             FROM accounts.users user_
             LEFT JOIN accounts.user_profiles profile
@@ -65,6 +66,8 @@ impl UserProfile {
                 ON location_.id = harvest.location_id
             LEFT JOIN services.cultivars cultivar
                 ON harvest.cultivar_id = cultivar.id
+            LEFT JOIN services.cultivar_categories cultivar_category
+                ON cultivar.category_id = cultivar_category.id
 
             WHERE user_.id = $1
             ORDER BY harvest.created_at
@@ -130,6 +133,7 @@ impl UserProfile {
                                         rec.harvest_harvest_date.unwrap(),
                                         rec.harvest_images,
                                         rec.cultivar_name.unwrap(),
+                                        rec.cultivar_category.unwrap(),
                                         rec.cultivar_image,
                                         rec.location_place_name.unwrap(),
                                         rec.location_region,

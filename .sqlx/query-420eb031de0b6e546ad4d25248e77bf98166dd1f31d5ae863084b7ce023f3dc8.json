@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT user_.id AS user_id,\n                user_.first_name AS user_first_name,\n                user_.last_name AS user_last_name,\n                user_.date_joined AS user_date_joined,\n                profile.about AS \"user_about?\",\n                profile.photo AS user_photo,\n                profile.lives_at AS user_lives_at,\n                farm.id AS \"farm_id?\",\n                farm.name AS \"farm_name?\",\n                farm.logo AS \"farm_logo\",\n                farm.contact_email AS \"farm_contact_email\",\n                farm.contact_number AS \"farm_contact_number\",\n                farm.registered_on AS \"farm_registered_on?\",\n                location_.id AS \"location_id?\",\n                location_.place_name AS \"location_place_name?\",\n                location_.coords AS location_coords,\n                location_.description AS location_description,\n                country.name AS \"location_country?\",\n                region.name AS \"location_region?\",\n                harvest.id AS \"harvest_id?\",\n                harvest.price AS \"harvest_price?\",\n                harvest.images AS harvest_images,\n                harvest.harvest_date AS \"harvest_harvest_date?\",\n                cultivar.name AS \"cultivar_name?\",\n                cultivar.image AS cultivar_image\n            FROM accounts.users user_\n            LEFT JOIN accounts.user_profiles profile\n                ON user_.id = profile.user_id\n            LEFT JOIN services.active_farms farm\n                ON user_.id = farm.owner_id\n            LEFT JOIN services.active_locations location_\n                ON farm.id = location_.farm_id\n            LEFT JOIN services.countries country\n                ON location_.country_id = country.id\n            LEFT JOIN services.regions region\n                ON location_.region_id = region.id\n            LEFT JOIN services.active_harvests harvest\n                ON location_.id = harvest.location_id\n            LEFT JOIN services.cultivars cultivar\n                ON harvest.cultivar_id = cultivar.id\n\n            WHERE user_.id = $1\n            ORDER BY harvest.created_at\n        ",
+  "query": "\n            SELECT user_.id AS user_id,\n                user_.first_name AS user_first_name,\n                user_.last_name AS user_last_name,\n                user_.date_joined AS user_date_joined,\n                profile.about AS \"user_about?\",\n                profile.photo AS user_photo,\n                profile.lives_at AS user_lives_at,\n                farm.id AS \"farm_id?\",\n                farm.name AS \"farm_name?\",\n                farm.logo AS \"farm_logo\",\n                farm.contact_email AS \"farm_contact_email\",\n                farm.contact_number AS \"farm_contact_number\",\n                farm.registered_on AS \"farm_registered_on?\",\n                location_.id AS \"location_id?\",\n                location_.place_name AS \"location_place_name?\",\n                location_.coords AS location_coords,\n                location_.description AS location_description,\n                country.name AS \"location_country?\",\n                region.name AS \"location_region?\",\n                harvest.id AS \"harvest_id?\",\n                harvest.price AS \"harvest_price?\",\n                harvest.images AS harvest_images,\n                harvest.harvest_date AS \"harvest_harvest_date?\",\n                cultivar.name AS \"cultivar_name?\",\n                cultivar_category.name AS \"cultivar_category?\",\n                cultivar.image AS cultivar_image\n            FROM accounts.users user_\n            LEFT JOIN accounts.user_profiles profile\n                ON user_.id = profile.user_id\n            LEFT JOIN services.active_farms farm\n                ON user_.id = farm.owner_id\n            LEFT JOIN services.active_locations location_\n                ON farm.id = location_.farm_id\n            LEFT JOIN services.countries country\n                ON location_.country_id = country.id\n            LEFT JOIN services.regions region\n                ON location_.region_id = region.id\n            LEFT JOIN services.active_harvests harvest\n                ON location_.id = harvest.location_id\n            LEFT JOIN services.cultivars cultivar\n                ON harvest.cultivar_id = cultivar.id\n            LEFT JOIN services.cultivar_categories cultivar_category\n                ON cultivar.category_id = cultivar_category.id\n\n            WHERE user_.id = $1\n            ORDER BY harvest.created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -125,6 +125,11 @@
       },
       {
         "ordinal": 24,
+        "name": "cultivar_category?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
         "name": "cultivar_image",
         "type_info": "Text"
       }
@@ -159,8 +164,9 @@
       true,
       true,
       false,
+      false,
       true
     ]
   },
-  "hash": "99bc3f75176a63123c549c0a24707e047d26451c8b89cc13052dd36c1bf19f03"
+  "hash": "420eb031de0b6e546ad4d25248e77bf98166dd1f31d5ae863084b7ce023f3dc8"
 }

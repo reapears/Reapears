@@ -41,26 +41,47 @@ const defaultUsher = {
   },
 };
 
-const demoSlice = createSlice({
-  name: "Demo",
+const cultivarFilterSlice = createSlice({
+  name: "cultivarFilters",
   initialState: {
-    demoList: [],
+    filter: "Harvests",
   },
   reducers: {
-    add(state, action) {
-      const newList = state.demoList.concat(action.payload);
-      return { ...state, demoList: newList };
+    selectCultivarFilter(state, action) {
+      return { ...state, filter: action.payload };
     },
-    remove(state, action) {
-      const newList = state.demoList.filter((i) => i.id !== action.payload.id);
-      return { ...state, demoList: newList };
+    unselectCultivarFilter(state, action) {
+      return { ...state, filter: "" };
     },
   },
 });
 
-export const { add, remove } = demoSlice.actions;
-const demoReducer = demoSlice.reducer;
+export const { selectCultivarFilter, unselectCultivarFilter } =
+  cultivarFilterSlice.actions;
+
+// const demoSlice = createSlice({
+//   name: "Demo",
+//   initialState: {
+//     demoList: [],
+//   },
+//   reducers: {
+//     add(state, action) {
+//       const newList = state.demoList.concat(action.payload);
+//       return { ...state, demoList: newList };
+//     },
+//     remove(state, action) {
+//       const newList = state.demoList.filter((i) => i.id !== action.payload.id);
+//       return { ...state, demoList: newList };
+//     },
+//   },
+// });
+
+// export const { add, remove } = demoSlice.actions;
+// const demoReducer = demoSlice.reducer;
 
 export const store = configureStore({
-  reducer: { demoReducer: demoReducer },
+  reducer: {
+    // demoReducer: demoReducer,
+    cultivarFilter: cultivarFilterSlice.reducer,
+  },
 });

@@ -2,8 +2,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, FromRequestParts, Json},
-    http::Request,
+    extract::{rejection::JsonRejection, FromRequest, FromRequestParts, Json, Request},
 };
 use serde::Deserialize;
 use time::{Date, OffsetDateTime};
@@ -109,14 +108,13 @@ impl HarvestCreateForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for HarvestCreateForm
+impl FromRequest<ServerState> for HarvestCreateForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let (mut parts, body) = req.into_parts();
         let user = { FarmerUser::from_parts(&mut parts, state).await? };
@@ -219,14 +217,13 @@ impl HarvestUpdateForm {
 }
 
 #[async_trait]
-impl<B> FromRequest<ServerState, B> for HarvestUpdateForm
+impl FromRequest<ServerState> for HarvestUpdateForm
 where
-    Json<Self>: FromRequest<ServerState, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<Self>: FromRequest<ServerState, Rejection = JsonRejection>,
 {
     type Rejection = EndpointRejection;
 
-    async fn from_request(req: Request<B>, state: &ServerState) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &ServerState) -> Result<Self, Self::Rejection> {
         // Extract data
         let (mut parts, body) = req.into_parts();
         let user = { FarmerUser::from_parts(&mut parts, state).await? };

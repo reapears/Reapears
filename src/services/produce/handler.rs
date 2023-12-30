@@ -56,7 +56,7 @@ pub async fn harvest_feed(
         .map_err(|_err| EndpointRejection::internal_server_error())?;
 
     // Get the next skip_id
-    let offset_id: Option<ModelID> = harvests.pop().map(|h| h.id);
+    let offset: Option<ModelID> = harvests.pop().map(|h| h.id);
 
     // // Sort Harvests. Harvests are sorted by boost_amount
     // // and then with available_at date relative to today's date.
@@ -72,24 +72,23 @@ pub async fn harvest_feed(
     //         .reverse()
     // });
 
-    Ok(Json(HarvestFeed {
-        harvests,
-        offset_id,
-    }))
+    Ok(Json(HarvestFeed { harvests, offset }))
 }
 
 /// Harvests feed
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HarvestFeed {
     harvests: HarvestList,
     // Used for querying the next result set.
     // if `offset_id` is `None`, the result set has been exhausted;
     // there is no more harvests to be returned.
-    offset_id: Option<ModelID>,
+    offset: Option<ModelID>,
 }
 
 /// `harvests/feed` query parameters.
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HarvestFilter {
     /// filters for cultivar name
     #[serde(default)]

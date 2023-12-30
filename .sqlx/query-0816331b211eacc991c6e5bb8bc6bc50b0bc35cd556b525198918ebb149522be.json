@@ -1,0 +1,114 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT location_.id AS location_id,\n                    location_.place_name AS location_place_name,\n                    location_.coords AS location_coords,\n                    location_.description AS location_description,\n                    region.name AS \"location_region?\",\n                    country.name AS location_country,\n                    farm.id AS farm_id,\n                    farm.name AS farm_name,\n                    farm.logo AS farm_logo,\n                    harvest.id AS \"harvest_id?\",\n                    harvest.price AS \"harvest_price?\",\n                    harvest.harvest_date AS \"harvest_harvest_date?\",\n                    harvest.images AS harvest_images,\n                    cultivar.name AS \"cultivar_name?\",\n                    cultivar_category.name AS \"cultivar_category?\",\n                    cultivar.image AS cultivar_image\n                FROM services.locations location_\n                LEFT JOIN services.farms farm\n                    ON location_.farm_id = farm.id\n                LEFT JOIN services.regions region\n                    ON location_.region_id = region.id\n                LEFT JOIN services.countries country\n                    ON location_.country_id = country.id\n                LEFT JOIN services.active_harvests harvest\n                    ON location_.id = harvest.location_id\n                LEFT JOIN services.cultivars cultivar\n                    ON harvest.cultivar_id = cultivar.id\n                LEFT JOIN services.cultivar_categories cultivar_category\n                    ON cultivar.category_id = cultivar_category.id\n\n                WHERE location_.id = $1\n                ORDER BY harvest.created_at\n                LIMIT $2\n                OFFSET $3;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "location_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "location_place_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "location_coords",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "location_description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "location_region?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "location_country",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "farm_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "farm_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "farm_logo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "harvest_id?",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "harvest_price?",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 11,
+        "name": "harvest_harvest_date?",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 12,
+        "name": "harvest_images",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 13,
+        "name": "cultivar_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "cultivar_category?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "cultivar_image",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "0816331b211eacc991c6e5bb8bc6bc50b0bc35cd556b525198918ebb149522be"
+}

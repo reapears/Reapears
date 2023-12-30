@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT harvest.id AS \"harvest_id!\",\n                    harvest.cultivar_id,\n                    harvest.price AS \"harvest_price!\",\n                    harvest.harvest_date AS \"harvest_harvest_date!\",\n                    harvest.images AS harvest_images,\n                    cultivar.name AS cultivar_name,\n                    cultivar_category.name AS cultivar_category,\n                    cultivar.image AS cultivar_image, \n                    farm.name AS farm_name,\n                    farm.logo AS farm_logo,\n                    location_.place_name AS location_place_name,\n                    location_.coords AS location_coords,\n                    region.name AS \"location_region?\",\n                    country.name AS location_country,\n                    subscription.amount AS \"boost_amount?\",\n                    subscription.expires_at AS \"subscription_expires_at?\"\n                FROM services.active_harvests harvest\n                LEFT JOIN services.cultivars cultivar\n                    ON harvest.cultivar_id = cultivar.id\n                LEFT JOIN services.cultivar_categories cultivar_category\n                    ON cultivar.category_id = cultivar_category.id\n                LEFT JOIN services.locations location_\n                    ON harvest.location_id = location_.id\n                LEFT JOIN services.farms farm\n                    ON location_.farm_id = farm.id\n                LEFT JOIN services.regions region\n                    ON location_.region_id = region.id\n                LEFT JOIN services.countries country\n                    ON location_.country_id = country.id\n\n                LEFT JOIN features.harvest_subscriptions subscription\n                    ON harvest.id  = subscription.harvest_id\n\n                ORDER BY subscription.amount DESC NULLS LAST,\n                    greatest(AGE(harvest.harvest_date), -AGE(harvest.harvest_date));\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "harvest_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "cultivar_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "harvest_price!",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "harvest_harvest_date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 4,
+        "name": "harvest_images",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 5,
+        "name": "cultivar_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "cultivar_category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "cultivar_image",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "farm_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "farm_logo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "location_place_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "location_coords",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 12,
+        "name": "location_region?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "location_country",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "boost_amount?",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "subscription_expires_at?",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "eec40c238d837a56c4ecf66ff63ab55e84bcfbb25863a3dd2fed0798ca618150"
+}

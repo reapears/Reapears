@@ -14,7 +14,7 @@ pub struct ServerError {
 }
 
 impl ServerError {
-    pub const MESSAGE: &str = "\
+    pub const MESSAGE: &'static str = "\
 Something went wrong Unfortunately, a server error prevented your request from being completed. Reapears may be undergoing maintenance or your connection may have timed out. Please refresh the page or try again.";
 
     /// Create a new internal server with message
