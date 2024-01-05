@@ -1,6 +1,6 @@
 //! Server State impls
 
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
@@ -12,22 +12,60 @@ use super::config::Config;
 
 /// Server's state
 #[derive(Clone)]
-pub struct ServerState {
-    pub database: DatabaseConnection,
-    pub outlook_client: Mail,
-    pub chat: ChatFeed,
-    pub cookie_key: Key,
+pub struct ServerState(Arc<StateInner>);
+
+#[derive(Clone)]
+struct StateInner {
+    database: DatabaseConnection,
+    outlook_client: Mail,
+    chat: ChatFeed,
+    cookie_key: Key,
 }
 
 impl ServerState {
     /// Creates new `ServerState`.
     pub async fn from_config(config: Config) -> Self {
-        Self {
+        Self(Arc::new(StateInner {
             database: DatabaseConnection::new(&config.database_url).await,
             outlook_client: Mail::outlook(&config.mail_email, config.mail_password),
             chat: ChatFeed::new(),
             cookie_key: config.cookie_key,
-        }
+        }))
+    }
+
+    /// Clone and returns database connection
+    #[must_use]
+    #[inline]
+    pub fn database(&self) -> DatabaseConnection {
+        self.0.database.clone()
+    }
+
+    /// Clone and returns mail client
+    #[must_use]
+    #[inline]
+    pub fn outlook_client(&self) -> Mail {
+        self.0.outlook_client.clone()
+    }
+
+    /// Clone and returns chat feed instance
+    #[must_use]
+    #[inline]
+    pub fn chat_feed(&self) -> ChatFeed {
+        self.0.chat.clone()
+    }
+
+    /// Clone and returns chat feed instance
+    #[must_use]
+    #[inline]
+    pub fn chat_feed_as_ref(&self) -> &ChatFeed {
+        &self.0.chat
+    }
+
+    /// Clone and returns cookie key
+    #[must_use]
+    #[inline]
+    pub fn cookie_key(&self) -> Key {
+        self.0.cookie_key.clone()
     }
 }
 
@@ -39,25 +77,25 @@ impl fmt::Debug for ServerState {
 
 impl FromRef<ServerState> for DatabaseConnection {
     fn from_ref(state: &ServerState) -> Self {
-        state.database.clone()
+        state.database()
     }
 }
 
 impl FromRef<ServerState> for ChatFeed {
     fn from_ref(state: &ServerState) -> Self {
-        state.chat.clone()
+        state.chat_feed()
     }
 }
 
 impl FromRef<ServerState> for Mail {
     fn from_ref(state: &ServerState) -> Self {
-        state.outlook_client.clone()
+        state.outlook_client()
     }
 }
 
 impl FromRef<ServerState> for Key {
     fn from_ref(state: &ServerState) -> Self {
-        state.cookie_key.clone()
+        state.cookie_key()
     }
 }
 

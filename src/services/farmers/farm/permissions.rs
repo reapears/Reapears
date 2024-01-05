@@ -24,7 +24,7 @@ impl FromRequestParts<ServerState> for FarmOwnershipPermission {
         let user = FarmerUser::from_parts(parts, state).await?;
         let farm_id = ModelID::from_request_parts(parts, state).await?;
 
-        check_user_owns_farm(user.id(), farm_id, state.database.clone()).await?;
+        check_user_owns_farm(user.id(), farm_id, state.database()).await?;
 
         Ok(Self)
     }

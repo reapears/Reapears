@@ -71,7 +71,7 @@ pub async fn run() {
         .with_state(state.clone());
 
     // RUN MIGRATIONS
-    let db = state.database.clone();
+    let db = state.database();
     run_migration(db.clone()).await;
 
     // Create superuser if values given.

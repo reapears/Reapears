@@ -50,7 +50,7 @@ pub async fn direct_message_websocket(
 /// Manages connected user chat.
 async fn direct_message_handler(stream: WebSocket, user: CurrentUser, state: ServerState) {
     let user_id = user.id;
-    let chat = state.chat.clone();
+    let chat = state.chat_feed();
     let (outgoing, incoming) = stream.split();
 
     // Broadcast user connected
@@ -60,15 +60,15 @@ async fn direct_message_handler(stream: WebSocket, user: CurrentUser, state: Ser
     // and forward them to user if it is intended for them.
     let mut send_messages = tokio::spawn({
         let user = user.clone();
-        let message_listener = state.chat.subscribe();
+        let message_listener = state.chat_feed_as_ref().subscribe();
         async move { listen_send_messages(user, message_listener, outgoing).await }
     });
 
     // Receive incoming messages sent by user via websocket
     // and process them.
     let mut recv_messages = tokio::spawn({
-        let chat = state.chat.clone();
-        let db = state.database.clone();
+        let chat = state.chat_feed();
+        let db = state.database();
         async move { recv_broadcast_messages(user, chat, incoming, db).await }
     });
 

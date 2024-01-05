@@ -160,7 +160,7 @@ impl LocationCreateForm {
         farm_id: ModelID,
         state: &ServerState,
     ) -> EndpointResult<()> {
-        check_user_owns_farm(user.id(), farm_id, state.database.clone()).await
+        check_user_owns_farm(user.id(), farm_id, state.database()).await
     }
 }
 
@@ -259,7 +259,7 @@ impl LocationUpdateForm {
         location_id: ModelID,
         state: &ServerState,
     ) -> EndpointResult<()> {
-        check_user_owns_location(user.id(), location_id, state.database.clone()).await
+        check_user_owns_location(user.id(), location_id, state.database()).await
     }
 }
 

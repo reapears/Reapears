@@ -37,12 +37,12 @@ impl FromRequestParts<ServerState> for CurrentUser {
         parts: &mut Parts,
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
-        let db = state.database.clone();
-        let key = state.cookie_key.clone();
+        let db = state.database();
+        let key = state.cookie_key();
         let cookie_jar = PrivateCookieJar::from_headers(&parts.headers, key);
 
         let user = match get_session_token_hash(&cookie_jar) {
-            Some(session_token) => Self::from_cookies(session_token, db.clone()).await?,
+            Some(session_token) => Self::from_cookies(session_token, db).await?,
             None => Self::from_api_key(parts, state).await?,
         };
 
@@ -98,7 +98,7 @@ impl CurrentUser {
         };
 
         let token = auth::hash_token(key.api_key.as_bytes());
-        let Some(user) = get_current_user_by_api_key(token, state.database.clone()).await? else {
+        let Some(user) = get_current_user_by_api_key(token, state.database()).await? else {
             return Err(EndpointRejection::unauthorized());
         };
 

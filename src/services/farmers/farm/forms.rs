@@ -177,7 +177,7 @@ impl FarmUpdateForm {
         user: FarmerUser,
         farm_id: ModelID,
     ) -> EndpointResult<()> {
-        check_user_owns_farm(user.id(), farm_id, state.database.clone()).await
+        check_user_owns_farm(user.id(), farm_id, state.database()).await
     }
 }
 

@@ -109,7 +109,7 @@ where
         // Validate form fields
         signup.validate()?;
 
-        let db = state.database.clone();
+        let db = state.database();
         let email = signup.email.clone();
         if EmailModel::exists_and_verified(email.clone(), db.clone()).await? {
             // A redirect to login perhaps

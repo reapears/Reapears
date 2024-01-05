@@ -24,7 +24,7 @@ impl FromRequestParts<ServerState> for HarvestOwnershipPermission {
         let user = FarmerUser::from_parts(parts, state).await?;
         let harvest_id = ModelID::from_request_parts(parts, state).await?;
 
-        check_user_owns_harvest(user.id(), harvest_id, state.database.clone()).await?;
+        check_user_owns_harvest(user.id(), harvest_id, state.database()).await?;
 
         Ok(Self)
     }

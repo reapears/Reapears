@@ -20,7 +20,7 @@ pub async fn server_maintenance(state: ServerState) {
     loop {
         interval.tick().await;
 
-        let db = state.database.clone();
+        let db = state.database();
         // Delete user accounts the requested for account deletion
         AccountDelete::permanently_delete_accounts(db).await;
     }

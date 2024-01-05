@@ -24,8 +24,8 @@ impl FromRequestParts<ServerState> for LocationDeletePermission {
         let user = FarmerUser::from_parts(parts, state).await?;
         let location_id = ModelID::from_request_parts(parts, state).await?;
 
-        check_user_owns_location(user.id(), location_id, state.database.clone()).await?;
-        let Some(count) = get_location_count(location_id, state.database.clone()).await? else {
+        check_user_owns_location(user.id(), location_id, state.database()).await?;
+        let Some(count) = get_location_count(location_id, state.database()).await? else {
             return Err(EndpointRejection::forbidden());
         };
 

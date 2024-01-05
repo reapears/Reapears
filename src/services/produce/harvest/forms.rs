@@ -103,7 +103,7 @@ impl HarvestCreateForm {
         location_id: ModelID,
     ) -> EndpointResult<()> {
         // Validate the location belongs to the users's farm
-        check_user_owns_location(user.id(), location_id, state.database.clone()).await
+        check_user_owns_location(user.id(), location_id, state.database()).await
     }
 }
 
@@ -211,7 +211,7 @@ impl HarvestUpdateForm {
         harvest_id: ModelID,
         location_id: ModelID,
     ) -> EndpointResult<()> {
-        let db = state.database.clone();
+        let db = state.database();
         check_user_can_update_harvest(user.id(), location_id, harvest_id, db).await
     }
 }

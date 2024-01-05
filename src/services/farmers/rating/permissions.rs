@@ -24,7 +24,7 @@ impl FromRequestParts<ServerState> for FarmRatingOwnershipPermission {
         let user = CurrentUser::from_parts(parts, state).await?;
         let rating_id = ModelID::from_request_parts(parts, state).await?;
 
-        check_user_owns_rating(user.id(), rating_id, state.database.clone()).await?;
+        check_user_owns_rating(user.id(), rating_id, state.database()).await?;
 
         Ok(Self)
     }

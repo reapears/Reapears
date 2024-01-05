@@ -145,7 +145,7 @@ impl FarmRatingUpdateForm {
         rating_id: ModelID,
         state: &ServerState,
     ) -> EndpointResult<()> {
-        check_user_owns_rating(user.id, rating_id, state.database.clone()).await
+        check_user_owns_rating(user.id, rating_id, state.database()).await
     }
 }
 

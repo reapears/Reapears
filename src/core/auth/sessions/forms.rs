@@ -105,7 +105,7 @@ where
         // Validate form fields
         login.validate()?;
 
-        let db = state.database.clone();
+        let db = state.database();
         let email = login.email.clone();
 
         let Some(user) = Session::find_user_by_email(email.clone(), db.clone()).await? else {

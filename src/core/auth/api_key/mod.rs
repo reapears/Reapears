@@ -45,7 +45,7 @@ impl FromRequestParts<ServerState> for ApiAuthentication {
                 return Err(EndpointRejection::unauthorized());
             };
             // Verify api key.
-            if !ApiToken::exists(hash_token(key.api_key.as_bytes()), state.database.clone()).await?
+            if !ApiToken::exists(hash_token(key.api_key.as_bytes()), state.database()).await?
             {
                 tracing::debug!("Request rejected invalid api key.");
                 return Err(EndpointRejection::unauthorized());
